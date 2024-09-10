@@ -4,6 +4,11 @@
 use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
 use tauri_plugin_positioner::{Position, WindowExt};
 
+#[tauri::command]
+async fn greet() -> String {
+    "Hello world".to_string()
+}
+
 fn main() {
     let quit = CustomMenuItem::new("quit".to_string(), "Quit").accelerator("Cmd+Q");
     let system_tray_menu = SystemTrayMenu::new().add_item(quit);
@@ -43,6 +48,7 @@ fn main() {
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![greet])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
