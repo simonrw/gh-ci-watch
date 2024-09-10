@@ -24,10 +24,11 @@ fn main() {
                         window.set_focus().unwrap();
                     }
                 }
-                SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
-                    "quit" => std::process::exit(0),
-                    _ => {}
-                },
+                SystemTrayEvent::MenuItemClick { id, .. } => {
+                    if id.as_str() == "quit" {
+                        std::process::exit(0)
+                    }
+                }
                 _ => {}
             }
         })
@@ -37,6 +38,10 @@ fn main() {
                     event.window().hide().unwrap();
                 }
             }
+        })
+        .setup(|app| {
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
