@@ -17,18 +17,11 @@
         "open": true
       }
     },
-    "macOSPrivateApi": true,
     "windows": [
       {
         "fullscreen": false,
         "title": "menubartest",
         "width": 600,
-        "resizable": false,
-        "visible": false,
-        "hiddenTitle": true,
-        "decorations": false,
-        "focus": false,
-        "transparent": true,
         "height": 600
       }
     ],
@@ -46,11 +39,6 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ]
-    },
-    "systemTray": {
-        "iconPath": "icons/icon.png",
-        "iconAsTemplate": true,
-        "menuOnLeftClick": false
     }
   }
 }

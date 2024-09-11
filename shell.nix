@@ -8,6 +8,7 @@ mkShell rec {
   ] ++ lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
     libiconv
     Cocoa
+    WebKit
   ]) ++ lib.optionals stdenv.isLinux [
     mold
   ];

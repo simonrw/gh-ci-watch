@@ -1,3 +1,6 @@
+// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use std::time::Duration;
 
 use clap::Parser;
@@ -204,30 +207,27 @@ impl Poller {
     }
 }
 
-fn main() -> eyre::Result<()> {
-    color_eyre::install().unwrap();
-    tracing_subscriber::fmt::init();
+// fn main() -> eyre::Result<()> {
+//     color_eyre::install().unwrap();
+//     tracing_subscriber::fmt::init();
 
-    let args = Args::parse();
+//     let args = Args::parse();
 
-    let client = GitHubClient::from_env().unwrap();
-    let mut poller = Poller::builder(client)
-        .with_sleep_time(args.sleep_time)
-        .build()
-        .wrap_err("invalid poller configuration")?;
-    poller.add(PrDescription {
-        number: 3375,
-        repo: "localstack-ext".to_string(),
-        owner: "localstack".to_string(),
-    });
+//     let client = GitHubClient::from_env().unwrap();
+//     let mut poller = Poller::builder(client)
+//         .with_sleep_time(args.sleep_time)
+//         .build()
+//         .wrap_err("invalid poller configuration")?;
+//     poller.add(PrDescription {
+//         number: 3375,
+//         repo: "localstack-ext".to_string(),
+//         owner: "localstack".to_string(),
+//     });
 
-    poller.start().wrap_err("running poller")?;
+//     poller.start().wrap_err("running poller")?;
 
-    Ok(())
-}
-
-// Prevents additional console window on Windows in release, DO NOT REMOVE!!
-// #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+//     Ok(())
+// }
 
 // use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
 // use tauri_plugin_positioner::{Position, WindowExt};
@@ -236,6 +236,12 @@ fn main() -> eyre::Result<()> {
 // async fn greet() -> String {
 //     "Hello world".to_string()
 // }
+
+fn main() {
+    tauri::Builder::default()
+        .run(tauri::generate_context!())
+        .expect("error running application");
+}
 
 // #[allow(unused)]
 // fn tauri_main() {
