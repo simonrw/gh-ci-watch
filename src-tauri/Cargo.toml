@@ -23,7 +23,11 @@ color-eyre = "0.6.3"
 reqwest = { version = "0.12.7", features = ["blocking", "json"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["fmt"] }
+clap = { version = "4.5.17", features = ["derive"] }
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+
+[dev-dependencies]
+approx = "0.5.1"
