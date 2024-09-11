@@ -1,7 +1,10 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::time::Duration;
+use std::{
+    sync::mpsc::{self, Receiver, Sender},
+    time::Duration,
+};
 
 use clap::Parser;
 use color_eyre::eyre::{self, Context};
@@ -66,6 +69,7 @@ impl From<PrDescription> for Pr {
 struct PollerBuilder {
     client: GitHubClient,
     sleep_time: Option<u64>,
+    handle: Option<AppHandle>,
 }
 
 impl PollerBuilder {
@@ -74,31 +78,58 @@ impl PollerBuilder {
         self
     }
 
+    fn with_handle(mut self, handle: AppHandle) -> Self {
+        self.handle = Some(handle);
+        self
+    }
+
     fn build(self) -> eyre::Result<Poller> {
         let sleep_time = self
             .sleep_time
             .ok_or(eyre::eyre!("no sleep time provided"))?;
+        let handle = self.handle.ok_or(eyre::eyre!("no handle provided"))?;
+        let (tx, rx) = mpsc::channel();
         Ok(Poller {
             client: self.client,
             prs: Vec::new(),
             sleep_time: Duration::from_secs(sleep_time),
+            handle,
+            inbox: rx,
+            outbox: tx,
         })
     }
+
+    fn new(client: GitHubClient) -> Self {
+        Self {
+            client,
+            sleep_time: None,
+            handle: None,
+        }
+    }
+}
+
+struct PollerHandle {
+    outbox: Sender<Command>,
 }
 
 struct Poller {
     client: GitHubClient,
     prs: Vec<Pr>,
     sleep_time: Duration,
+    handle: AppHandle,
+    outbox: Sender<Command>,
+    inbox: Receiver<Command>,
 }
 
 impl Poller {
+    fn handle(&self) -> PollerHandle {
+        let outbox = self.outbox.clone();
+        PollerHandle { outbox }
+    }
+
     fn builder(client: GitHubClient) -> PollerBuilder {
         // TODO: enumerate workflows on startup and use cache?
-        PollerBuilder {
-            client,
-            sleep_time: None,
-        }
+        PollerBuilder::new(client)
     }
 
     fn add(&mut self, pr: impl Into<Pr>) {
@@ -229,6 +260,8 @@ impl Poller {
 //     Ok(())
 // }
 
+use serde::Serialize;
+use tauri::{AppHandle, Manager};
 // use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
 // use tauri_plugin_positioner::{Position, WindowExt};
 
@@ -237,8 +270,50 @@ impl Poller {
 //     "Hello world".to_string()
 // }
 
+#[derive(Serialize, Clone)]
+struct Event {
+    name: String,
+}
+
+enum Command {}
+
+struct PrList {
+    prs: Vec<Pr>,
+}
+
 fn main() {
+    color_eyre::install().unwrap();
+    tracing_subscriber::fmt::init();
+
+    let args = Args::parse();
+
     tauri::Builder::default()
+        .setup(|app| {
+            #[cfg(debug_assertions)]
+            {
+                let window = app.get_window("main").unwrap();
+                window.open_devtools();
+            }
+
+            // set up events
+            let app_handle = app.app_handle();
+
+            let client = GitHubClient::from_env().unwrap();
+            let mut poller = Poller::builder(client)
+                .with_sleep_time(10)
+                .with_handle(app_handle)
+                .build()
+                .expect("invalid poller configuration");
+            poller.add(PrDescription {
+                number: 3375,
+                repo: "localstack-ext".to_string(),
+                owner: "localstack".to_string(),
+            });
+            let poller_handle = poller.handle();
+            std::thread::spawn(move || poller.start().unwrap());
+
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error running application");
 }
