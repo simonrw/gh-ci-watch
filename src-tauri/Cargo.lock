@@ -1782,6 +1782,8 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-positioner",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

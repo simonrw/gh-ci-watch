@@ -71,6 +71,7 @@ impl Poller {
     fn start(&mut self) -> eyre::Result<()> {
         // loop {
         for pr in &mut self.prs {
+            tracing::trace!(pr = ?pr, "handling PR");
             // fetch pr branch
             let pr_info = {
                 #[derive(Debug, Deserialize)]
@@ -185,8 +186,14 @@ impl Poller {
 
             match run.status.as_str() {
                 "completed" => match run.conclusion.as_deref() {
-                    Some("failure") => pr.status = Status::Failed,
-                    Some("success") => pr.status = Status::Succeeded,
+                    Some("failure") => {
+                        tracing::debug!(before = ?pr.status, after = ?Status::Failed, "updating status");
+                        pr.status = Status::Failed;
+                    }
+                    Some("success") => {
+                        tracing::debug!(before = ?pr.status, after = ?Status::Succeeded, "updating status");
+                        pr.status = Status::Succeeded;
+                    }
                     other => todo!(
                         "unhandled combination of status: completed and conclusion: {other:?}"
                     ),
@@ -244,6 +251,8 @@ impl GitHubClient {
 
 fn main() -> eyre::Result<()> {
     color_eyre::install().unwrap();
+    tracing_subscriber::fmt::init();
+
     let client = GitHubClient::from_env().unwrap();
     let mut poller = Poller::new(client);
     poller.add(PrDescription {
