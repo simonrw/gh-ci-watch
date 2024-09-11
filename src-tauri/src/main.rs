@@ -31,10 +31,7 @@ enum Status {
 
 impl Status {
     fn is_terminal(&self) -> bool {
-        match self {
-            Status::Succeeded | Status::Failed => true,
-            _ => false,
-        }
+        matches!(self, Status::Succeeded | Status::Failed)
     }
 }
 
