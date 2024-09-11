@@ -14,6 +14,7 @@ use github::{
 };
 
 mod github;
+mod poller_async;
 
 // The workflow id of the tests-ext.yml tests
 // TODO: how to calculate progress? Is the list of jobs/steps consistent?
@@ -260,8 +261,9 @@ impl Poller {
 //     Ok(())
 // }
 
+use poller_async::Command;
 use serde::Serialize;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, State};
 // use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
 // use tauri_plugin_positioner::{Position, WindowExt};
 
@@ -275,10 +277,26 @@ struct Event {
     name: String,
 }
 
-enum Command {}
-
 struct PrList {
     prs: Vec<Pr>,
+}
+
+struct AppState {
+    poller_handle: poller_async::Handle,
+}
+
+#[tauri::command]
+fn add_pr(pr_number: u64, state: State<AppState>) {
+    tracing::debug!(%pr_number, "got message from frontend");
+    let handle = &state.inner().poller_handle;
+    handle.add_pr(pr_number);
+}
+
+#[tauri::command]
+fn clear_prs(state: State<AppState>) {
+    tracing::debug!("clearing prs");
+    let handle = &state.inner().poller_handle;
+    handle.clear_prs();
 }
 
 fn main() {
@@ -298,22 +316,29 @@ fn main() {
             // set up events
             let app_handle = app.app_handle();
 
-            let client = GitHubClient::from_env().unwrap();
-            let mut poller = Poller::builder(client)
-                .with_sleep_time(10)
-                .with_handle(app_handle)
-                .build()
-                .expect("invalid poller configuration");
-            poller.add(PrDescription {
-                number: 3375,
-                repo: "localstack-ext".to_string(),
-                owner: "localstack".to_string(),
-            });
-            let poller_handle = poller.handle();
-            std::thread::spawn(move || poller.start().unwrap());
+            let handle = poller_async::Handle::new(app_handle);
+            let state = AppState {
+                poller_handle: handle,
+            };
+            app.manage(state);
+
+            // let client = GitHubClient::from_env().unwrap();
+            // let mut poller = Poller::builder(client)
+            //     .with_sleep_time(10)
+            //     .with_handle(app_handle)
+            //     .build()
+            //     .expect("invalid poller configuration");
+            // poller.add(PrDescription {
+            //     number: 3375,
+            //     repo: "localstack-ext".to_string(),
+            //     owner: "localstack".to_string(),
+            // });
+            // let poller_handle = poller.handle();
+            // std::thread::spawn(move || poller.start().unwrap());
 
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler!(add_pr, clear_prs))
         .run(tauri::generate_context!())
         .expect("error running application");
 }
