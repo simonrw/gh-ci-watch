@@ -1,10 +1,11 @@
 use color_eyre::eyre::{self, Context};
-use reqwest::{
-    blocking::Client,
-    header::{HeaderMap, HeaderValue, USER_AGENT},
-    IntoUrl,
+use github::{
+    Commit, GetPullRequestResponse, GetRunJobsResponse, GetWorkflowRunsQueryArgs,
+    GetWorkflowRunsResponse, GitHubClient, RunJob,
 };
 use serde::{Deserialize, Serialize};
+
+mod github;
 
 // TODO: how to calculate progress? Is the list of jobs/steps consistent?
 const EXT_TESTS_NUMBER: i64 = 107927392;
@@ -43,14 +44,6 @@ impl From<PrDescription> for Pr {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct Commit {
-    id: String,
-    message: String,
-    // TODO: datetime
-    timestamp: String,
-}
-
 struct Poller {
     client: GitHubClient,
     prs: Vec<Pr>,
@@ -76,73 +69,31 @@ impl Poller {
 
             // fetch pr branch
             tracing::debug!("fetching pr info");
-            let pr_info = {
-                #[derive(Debug, Deserialize)]
-                struct Head {
-                    #[serde(rename = "ref")]
-                    branch: String,
-                }
-                #[derive(Debug, Deserialize)]
-                struct PrInfo {
-                    title: String,
-                    head: Head,
-                }
-
-                let pr_info: PrInfo = self
-                    .client
-                    .get(
-                        format!(
-                            "https://api.github.com/repos/{}/{}/pulls/{}",
-                            &pr.owner, &pr.repo, &pr.number
-                        ),
-                        None::<()>,
-                    )
-                    .wrap_err("fetching branch info")?;
-                pr_info
-            };
+            let pr_info: GetPullRequestResponse = self
+                .client
+                .get(
+                    format!(
+                        "https://api.github.com/repos/{}/{}/pulls/{}",
+                        &pr.owner, &pr.repo, &pr.number
+                    ),
+                    None::<()>,
+                )
+                .wrap_err("fetching branch info")?;
 
             // fetch workflow runs for branch
             tracing::debug!("fetching workflow runs");
-            let mut workflow_runs = {
-                #[derive(Debug, Deserialize)]
-                struct Run {
-                    id: u64,
-                    name: String,
-                    status: String,
-                    conclusion: Option<String>,
-                    display_title: String,
-                    run_attempt: u64,
-                    run_number: u64,
-                    // TODO: datetime
-                    run_started_at: String,
-                    head_commit: Commit,
-                }
-
-                #[derive(Debug, Deserialize)]
-                struct Response {
-                    workflow_runs: Vec<Run>,
-                }
-
-                #[derive(Serialize)]
-                struct Query {
-                    branch: String,
-                }
-
-                let workflow_runs: Response = self
-                    .client
-                    .get(
-                        format!(
-                            "https://api.github.com/repos/{}/{}/actions/workflows/{}/runs",
-                            &pr.owner, &pr.repo, EXT_TESTS_NUMBER
-                        ),
-                        Some(Query {
-                            branch: pr_info.head.branch.clone(),
-                        }),
-                    )
-                    .wrap_err("fetching workflow runs")?;
-                workflow_runs.workflow_runs
-            };
-
+            let GetWorkflowRunsResponse { mut workflow_runs } = self
+                .client
+                .get(
+                    format!(
+                        "https://api.github.com/repos/{}/{}/actions/workflows/{}/runs",
+                        &pr.owner, &pr.repo, EXT_TESTS_NUMBER
+                    ),
+                    Some(GetWorkflowRunsQueryArgs {
+                        branch: pr_info.head.branch.clone(),
+                    }),
+                )
+                .wrap_err("fetching workflow runs")?;
             workflow_runs.sort_by_key(|k| k.run_number);
             let Some(run) = workflow_runs.pop() else {
                 // TODO
@@ -154,43 +105,22 @@ impl Poller {
             // TODO: only if the run is in progress
             // get run jobs
             tracing::debug!("fetching jobs for run");
-            let jobs = {
-                #[derive(Debug, Deserialize)]
-                struct Step {
-                    name: String,
-                    status: String,
-                    conclusion: Option<String>,
-                    started_at: Option<String>,
-                    completed_at: Option<String>,
-                }
+            let GetRunJobsResponse { jobs } = self
+                .client
+                .get(
+                    format!(
+                        "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
+                        pr.owner, pr.repo, run.id
+                    ),
+                    None::<()>,
+                )
+                .wrap_err("fetching run jobs")?;
 
-                #[derive(Debug, Deserialize)]
-                struct Job {
-                    id: u64,
-                    name: String,
-                    status: String,
-                    conclusion: Option<String>,
-                    started_at: String,
-                    completed_at: Option<String>,
-                    steps: Vec<Step>,
-                }
-                #[derive(Debug, Deserialize)]
-                struct Response {
-                    jobs: Vec<Job>,
-                }
-
-                let jobs: Response = self
-                    .client
-                    .get(
-                        format!(
-                            "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
-                            pr.owner, pr.repo, run.id
-                        ),
-                        None::<()>,
-                    )
-                    .wrap_err("fetching run jobs")?;
-                jobs
-            };
+            // DEBUG
+            let mut f = std::fs::File::create("in-progress-jobs.json").unwrap();
+            if let Err(e) = serde_json::to_writer_pretty(&mut f, &jobs) {
+                tracing::warn!(error = ?e, "error saving in-progress job JSON state");
+            }
 
             tracing::debug!("updating PR state");
             match run.status.as_str() {
@@ -226,51 +156,6 @@ impl Poller {
         std::process::exit(0);
 
         // std::thread::sleep(Duration::from_secs(1));
-    }
-}
-
-struct GitHubClient {
-    client: Client,
-    token: String,
-}
-
-// Constructors
-impl GitHubClient {
-    fn from_env() -> eyre::Result<Self> {
-        let token = std::env::var("GITHUB_TOKEN").wrap_err("no GitHub token found")?;
-
-        let mut headers = HeaderMap::new();
-        headers.append(USER_AGENT, HeaderValue::from_static("gh-ci-watch"));
-
-        let client = reqwest::blocking::Client::builder()
-            .default_headers(headers)
-            .build()
-            .wrap_err("constructing HTTP client")?;
-        Ok(Self { client, token })
-    }
-
-    fn get<T, Q>(&self, url: impl IntoUrl, query: Option<Q>) -> eyre::Result<T>
-    where
-        T: for<'de> serde::Deserialize<'de>,
-        Q: Serialize,
-    {
-        let url = url.into_url().wrap_err("invalid URL")?;
-        let span = tracing::debug_span!("", url=%url);
-        let _guard = span.enter();
-
-        let mut builder = self.client.get(url).bearer_auth(&self.token);
-        if let Some(query) = &query {
-            builder = builder.query(query);
-        }
-
-        tracing::debug!("sending http request");
-        let response = builder.send().wrap_err("sending GET request")?;
-        if let Err(e) = response.error_for_status_ref() {
-            tracing::warn!(error = %e, "bad status from GitHub");
-            eyre::bail!("bad error status: {e}");
-        }
-        tracing::debug!("got http response");
-        response.json().wrap_err("decoding JSON response")
     }
 }
 
@@ -349,3 +234,15 @@ fn main() -> eyre::Result<()> {
 //         .run(tauri::generate_context!())
 //         .expect("error while running tauri application");
 // }
+
+fn calculate_progress(jobs: &[RunJob]) -> eyre::Result<f32> {
+    todo!()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::calculate_progress;
+
+    #[test]
+    fn from_example() {}
+}
