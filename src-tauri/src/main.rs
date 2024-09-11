@@ -11,6 +11,7 @@ const EXT_TESTS_NUMBER: i64 = 107927392;
 
 #[derive(Debug, Clone, Copy)]
 enum Status {
+    Queued,
     InProgress(f32),
     Succeeded,
     Failed,
@@ -69,10 +70,12 @@ impl Poller {
     }
 
     fn start(&mut self) -> eyre::Result<()> {
-        // loop {
         for pr in &mut self.prs {
-            tracing::trace!(pr = ?pr, "handling PR");
+            let span = tracing::debug_span!("", pr = ?pr.number);
+            let _guard = span.enter();
+
             // fetch pr branch
+            tracing::debug!("fetching pr info");
             let pr_info = {
                 #[derive(Debug, Deserialize)]
                 struct Head {
@@ -97,7 +100,9 @@ impl Poller {
                     .wrap_err("fetching branch info")?;
                 pr_info
             };
+
             // fetch workflow runs for branch
+            tracing::debug!("fetching workflow runs");
             let mut workflow_runs = {
                 #[derive(Debug, Deserialize)]
                 struct Run {
@@ -144,15 +149,18 @@ impl Poller {
                 eyre::bail!("no workflow runs found");
             };
 
+            tracing::debug!(run_id = %run.id, "got latest run");
+
             // TODO: only if the run is in progress
             // get run jobs
+            tracing::debug!("fetching jobs for run");
             let jobs = {
                 #[derive(Debug, Deserialize)]
                 struct Step {
                     name: String,
                     status: String,
                     conclusion: Option<String>,
-                    started_at: String,
+                    started_at: Option<String>,
                     completed_at: Option<String>,
                 }
 
@@ -184,6 +192,7 @@ impl Poller {
                 jobs
             };
 
+            tracing::debug!("updating PR state");
             match run.status.as_str() {
                 "completed" => match run.conclusion.as_deref() {
                     Some("failure") => {
@@ -198,13 +207,25 @@ impl Poller {
                         "unhandled combination of status: completed and conclusion: {other:?}"
                     ),
                 },
+                "queued" => {
+                    let new_status = Status::Queued;
+                    tracing::debug!(before = ?pr.status, after = ?new_status, "updating status");
+                    pr.status = new_status;
+                }
+                "in_progress" => {
+                    // TODO: work out completion percentage
+                    let new_status = Status::InProgress(0.0);
+                    tracing::debug!(before = ?pr.status, after = ?new_status, "updating status");
+                    pr.status = new_status;
+                }
                 other => todo!("unhandled status: {other}"),
             }
+            tracing::debug!("finished");
         }
+
         std::process::exit(0);
 
-        //     std::thread::sleep(Duration::from_secs(1));
-        // }
+        // std::thread::sleep(Duration::from_secs(1));
     }
 }
 
@@ -227,24 +248,28 @@ impl GitHubClient {
             .wrap_err("constructing HTTP client")?;
         Ok(Self { client, token })
     }
-}
 
-// Request methods
-impl GitHubClient {
     fn get<T, Q>(&self, url: impl IntoUrl, query: Option<Q>) -> eyre::Result<T>
     where
         T: for<'de> serde::Deserialize<'de>,
         Q: Serialize,
     {
+        let url = url.into_url().wrap_err("invalid URL")?;
+        let span = tracing::debug_span!("", url=%url);
+        let _guard = span.enter();
+
         let mut builder = self.client.get(url).bearer_auth(&self.token);
         if let Some(query) = &query {
             builder = builder.query(query);
         }
 
+        tracing::debug!("sending http request");
         let response = builder.send().wrap_err("sending GET request")?;
         if let Err(e) = response.error_for_status_ref() {
+            tracing::warn!(error = %e, "bad status from GitHub");
             eyre::bail!("bad error status: {e}");
         }
+        tracing::debug!("got http response");
         response.json().wrap_err("decoding JSON response")
     }
 }
@@ -256,12 +281,12 @@ fn main() -> eyre::Result<()> {
     let client = GitHubClient::from_env().unwrap();
     let mut poller = Poller::new(client);
     poller.add(PrDescription {
-        number: 3429,
+        number: 3375,
         repo: "localstack-ext".to_string(),
         owner: "localstack".to_string(),
     });
 
-    poller.start();
+    poller.start().wrap_err("running poller")?;
 
     Ok(())
 }
