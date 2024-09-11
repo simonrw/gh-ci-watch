@@ -29,6 +29,15 @@ enum Status {
     Unknown,
 }
 
+impl Status {
+    fn is_terminal(&self) -> bool {
+        match self {
+            Status::Succeeded | Status::Failed => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug)]
 struct Pr {
     status: Status,
@@ -102,6 +111,11 @@ impl Poller {
                 let span = tracing::debug_span!("", pr = ?pr.number);
                 let _guard = span.enter();
 
+                if pr.status.is_terminal() {
+                    tracing::debug!("skipping finished job");
+                    continue;
+                }
+
                 // fetch pr branch
                 tracing::debug!("fetching pr info");
                 let pr_info: GetPullRequestResponse = self
@@ -152,10 +166,10 @@ impl Poller {
                     .wrap_err("fetching run jobs")?;
 
                 // DEBUG
-                let mut f = std::fs::File::create("in-progress-jobs.json").unwrap();
-                if let Err(e) = serde_json::to_writer_pretty(&mut f, &jobs) {
-                    tracing::warn!(error = ?e, "error saving in-progress job JSON state");
-                }
+                // let mut f = std::fs::File::create("in-progress-jobs.json").unwrap();
+                // if let Err(e) = serde_json::to_writer_pretty(&mut f, &jobs) {
+                //     tracing::warn!(error = ?e, "error saving in-progress job JSON state");
+                // }
 
                 tracing::debug!("updating PR state");
                 match run.status.as_str() {
