@@ -9,6 +9,7 @@ use github::{
 
 mod github;
 
+// The workflow id of the tests-ext.yml tests
 // TODO: how to calculate progress? Is the list of jobs/steps consistent?
 const EXT_TESTS_NUMBER: i64 = 107927392;
 
@@ -275,24 +276,25 @@ fn main() -> eyre::Result<()> {
 
 fn calculate_progress(jobs: &[RunJob]) -> eyre::Result<f32> {
     let mut n_steps_total = 0;
-    let mut completed_jobs = 0.0f32;
+    let mut completed_steps = 0.0f32;
     for job in jobs {
         let n_steps = job.steps.len();
+
         if job.status == "completed" {
             n_steps_total += n_steps;
-            completed_jobs += 1.0;
+            completed_steps += n_steps as f32;
             continue;
         }
 
         for step in &job.steps {
             n_steps_total += 1;
             if step.status == "completed" {
-                completed_jobs += 1f32 / (n_steps as f32);
+                completed_steps += 1.0;
             }
         }
     }
     // TODO: fallable cast
-    Ok(completed_jobs / (n_steps_total as f32))
+    Ok(completed_steps / (n_steps_total as f32))
 }
 
 #[cfg(test)]
@@ -307,6 +309,6 @@ mod tests {
         let s = std::fs::read_to_string("testdata/in-progress-jobs.json").unwrap();
         let GetRunJobsResponse { jobs } = serde_json::from_str(&s).unwrap();
         let progress = calculate_progress(&jobs).unwrap();
-        assert_abs_diff_eq!(progress, 0.125, epsilon = 0.001);
+        assert_abs_diff_eq!(progress, 0.6875, epsilon = 0.001);
     }
 }
