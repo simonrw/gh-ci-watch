@@ -2,7 +2,12 @@ import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useEffect, useState } from "react";
 
-type Pr = number;
+type Pr = {
+  status: string;
+  number: number;
+  repo: string;
+  owner: string;
+};
 
 export default function Index() {
   const [prs, setPrs] = useState<Pr[]>([]);
@@ -58,10 +63,20 @@ export default function Index() {
       <div>
         <ul>
           {prs.map((pr) => {
-            return <li key={pr}>{pr}</li>;
+            return <PrStatus key={pr.number} pr={pr} />;
           })}
         </ul>
       </div>
+    </div>
+  );
+}
+
+function PrStatus({ pr }) {
+  return (
+    <div>
+      <p>
+        {pr.number} {pr.status}
+      </p>
     </div>
   );
 }

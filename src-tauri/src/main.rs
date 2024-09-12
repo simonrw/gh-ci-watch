@@ -1,11 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{
-    sync::mpsc::{self, Receiver, Sender},
-    time::Duration,
-};
-
 use clap::Parser;
 use color_eyre::eyre::{self, Context};
 use github::{
@@ -45,13 +40,13 @@ impl Status {
 #[derive(Debug, Serialize, Clone)]
 struct Pr {
     status: Status,
-    number: i64,
+    number: u64,
     repo: String,
     owner: String,
 }
 
 struct PrDescription {
-    number: i64,
+    number: u64,
     repo: String,
     owner: String,
 }

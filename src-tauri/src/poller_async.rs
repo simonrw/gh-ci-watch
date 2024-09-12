@@ -11,7 +11,7 @@ use crate::github::{
     GetPullRequestResponse, GetRunJobsResponse, GetWorkflowRunsQueryArgs, GetWorkflowRunsResponse,
     GitHubClient,
 };
-use crate::{Pr, EXT_TESTS_NUMBER};
+use crate::{Pr, Status, EXT_TESTS_NUMBER};
 
 static OWNER: &str = "localstack";
 static REPO: &str = "localstack-ext";
@@ -174,7 +174,12 @@ impl Poller {
                                 // pr.status = Status::Failed;
                             }
                             Some("success") => {
-                                todo!()
+                                Ok(Pr {
+                                    status: Status::Succeeded,
+                                    number: pr_number,
+                                    repo: REPO.to_string(),
+                                    owner: OWNER.to_string(),
+                                })
                                 // tracing::debug!(before = ?pr.status, after = ?Status::Succeeded, "updating status");
                                 // pr.status = Status::Succeeded;
                             }
@@ -203,7 +208,6 @@ impl Poller {
                 }
                 .instrument(span),
             );
-            todo!()
         }
 
         let mut pr_details = Vec::new();
