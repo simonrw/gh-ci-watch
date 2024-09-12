@@ -1,38 +1,21 @@
 import { listen } from "@tauri-apps/api/event";
-import { invoke } from "@tauri-apps/api/tauri";
 import { useEffect, useState } from "react";
+import { Pr } from "../types";
+import { PrStatus } from "../components/PrStatus";
 
-type Status = "Queued" | { InProgress: number } | "Succeeded" | "Failed";
-
-type Pr = {
-  status: Status;
-  number: number;
-  repo: string;
-  owner: string;
-};
+function isNumeric(str: string) {
+  if (typeof str != "string") return false; // we only process strings!
+  return (
+    !isNaN(str) && // use type coercion to parse the _entirety_ of the string (`parseFloat` alone does not do this)...
+    !isNaN(parseFloat(str))
+  ); // ...and ensure strings of whitespace fail
+}
 
 export default function Index() {
   const [prs, setPrs] = useState<Pr[]>([]);
+  const [owner, setOwner] = useState("");
+  const [repo, setRepo] = useState("");
   const [text, setText] = useState("");
-
-  const addPr: React.MouseEventHandler<HTMLButtonElement> = async (e) => {
-    e.preventDefault();
-    const num = parseInt(text);
-    if (Number.isNaN(num)) {
-      // not a valid number
-      setText("");
-      return;
-    }
-    console.log(num);
-
-    await invoke("add_pr", { prNumber: num });
-    setText("");
-  };
-
-  const clearPrs: React.MouseEventHandler<HTMLButtonElement> = async (e) => {
-    e.preventDefault();
-    await invoke("clear_prs");
-  };
 
   useEffect(() => {
     console.log("setting up listener");
@@ -50,17 +33,74 @@ export default function Index() {
     };
   }, []);
 
+  const addPr = () => {
+    // validation
+    if (!owner) {
+      console.error("no owner");
+      return;
+    }
+
+    if (!repo) {
+      console.error("no repo");
+      return;
+    }
+
+    if (!text) {
+      console.error("no text");
+      return;
+    }
+
+    const newPr: Pr = {
+      owner,
+      repo,
+      number: parseInt(text),
+      status: "Unknown",
+    };
+    console.log("Adding pr");
+    setPrs((prs) => [...prs, newPr]);
+  };
+
   return (
     <div className="mx-auto bg-slate-950 p-2 flex flex-col">
       <h1 className="text-2xl text-center">Actions</h1>
-      <input
-        className="text-black"
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-      ></input>
-      <button onClick={addPr}>Add PR</button>
-      <button onClick={clearPrs}>Clear PRs</button>
+      <div className="flex flex-col">
+        <label htmlFor="owner">Owner</label>
+        <input
+          id="owner"
+          className="text-black"
+          value={owner}
+          onChange={(e) => setOwner(e.target.value)}
+        ></input>
+        <label htmlFor="repo">Repo</label>
+        <input
+          id="repo"
+          className="text-black"
+          value={repo}
+          onChange={(e) => setRepo(e.target.value)}
+        ></input>
+        <label htmlFor="pr">Pr #</label>
+        <input
+          id="pr"
+          className="text-black"
+          type="text"
+          value={text}
+          onChange={(e) => {
+            console.log({ value: e.target.value });
+            if (!isNumeric(e.target.value)) {
+              return;
+            }
+            setText(e.target.value);
+          }}
+        ></input>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            addPr();
+          }}
+        >
+          Track PR
+        </button>
+      </div>
 
       <div>
         <ul>
@@ -69,17 +109,6 @@ export default function Index() {
           })}
         </ul>
       </div>
-    </div>
-  );
-}
-
-function PrStatus({ pr }: { pr: Pr }) {
-  const status = JSON.stringify(pr.status);
-  return (
-    <div>
-      <p>
-        {pr.owner}/{pr.repo} #{pr.number} {status}
-      </p>
     </div>
   );
 }
