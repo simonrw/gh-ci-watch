@@ -5,10 +5,10 @@ import { useEffect, useState } from "react";
 type Pr = number;
 
 export default function Index() {
-  const [prs, setPrs] = useState([]);
+  const [prs, setPrs] = useState<Pr[]>([]);
   const [text, setText] = useState("");
 
-  const addPr = async (e) => {
+  const addPr: React.MouseEventHandler<HTMLButtonElement> = async (e) => {
     e.preventDefault();
     const num = parseInt(text);
     if (Number.isNaN(num)) {
@@ -22,7 +22,7 @@ export default function Index() {
     setText("");
   };
 
-  const clearPrs = async (e) => {
+  const clearPrs: React.MouseEventHandler<HTMLButtonElement> = async (e) => {
     e.preventDefault();
     await invoke("clear_prs");
   };
@@ -30,7 +30,7 @@ export default function Index() {
   useEffect(() => {
     console.log("setting up listener");
     const unlisten = listen("state", (event) => {
-      const { payload: prs } = event;
+      const { payload: prs } = event as { payload: Pr[] };
       console.log({ prs });
       setPrs(prs);
     });
