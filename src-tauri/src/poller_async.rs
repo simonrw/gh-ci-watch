@@ -1,28 +1,55 @@
-use tauri::async_runtime::{self, channel, Receiver, Sender};
+use std::time::Duration;
+
+use tauri::async_runtime::{self, channel, JoinHandle, Receiver, Sender};
 use tauri::{AppHandle, Manager};
+use tokio::time;
 
 pub enum Command {
     AddPr(u64),
     RemovePr(u64),
     ClearPrs,
+    Tick,
 }
 
 pub struct Poller {
     receiver: Receiver<Command>,
     prs: Vec<u64>,
     handle: AppHandle,
+    heartbeat_handle: JoinHandle<()>,
+}
+
+async fn heartbeat(tx: Sender<Command>) {
+    let mut interval = time::interval(Duration::from_secs(10));
+
+    loop {
+        tokio::select! {
+            _ = interval.tick() => {
+                let _ = tx.send(Command::Tick).await;
+            },
+        }
+    }
 }
 
 impl Poller {
-    pub fn new(receiver: Receiver<Command>, handle: AppHandle) -> Self {
+    pub fn new(
+        internal_queue: Sender<Command>,
+        receiver: Receiver<Command>,
+        handle: AppHandle,
+    ) -> Self {
+        let heartbeat_handle = async_runtime::spawn(async move {
+            heartbeat(internal_queue).await;
+        });
+
         Self {
             receiver,
             prs: Vec::new(),
             handle,
+            heartbeat_handle,
         }
     }
 
     fn handle_command(&mut self, cmd: Command) {
+        let mut should_emit = true;
         match cmd {
             Command::AddPr(number) => {
                 self.prs.push(number);
@@ -37,8 +64,14 @@ impl Poller {
                     .collect()
             }
             Command::ClearPrs => self.prs.clear(),
+            Command::Tick => {
+                tracing::debug!("got heartbeat tick");
+                should_emit = false;
+            }
         }
-        self.handle.emit_all("state", self.prs.clone()).unwrap();
+        if should_emit {
+            self.handle.emit_all("state", self.prs.clone()).unwrap();
+        }
     }
 }
 
@@ -50,7 +83,8 @@ pub struct Handle {
 impl Handle {
     pub fn new(app_handle: tauri::AppHandle) -> Self {
         let (sender, receiver) = channel(100);
-        let poller = Poller::new(receiver, app_handle);
+        let heartbeat_handle = sender.clone();
+        let poller = Poller::new(heartbeat_handle, receiver, app_handle);
         async_runtime::spawn(run_poller(poller));
         Self { sender }
     }
