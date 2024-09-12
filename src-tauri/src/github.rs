@@ -103,9 +103,6 @@ impl GitHubClient {
         Q: Serialize,
     {
         let url = url.into_url().wrap_err("invalid URL")?;
-        let span = tracing::debug_span!("", url=%url);
-        let _guard = span.enter();
-
         let mut builder = self.client.get(url).bearer_auth(&self.token);
         if let Some(query) = &query {
             builder = builder.query(query);
