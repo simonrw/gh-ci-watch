@@ -26,7 +26,7 @@ struct Args {
     sleep_time: u64,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Serialize, Clone, Copy)]
 enum Status {
     Queued,
     #[allow(dead_code)]
@@ -42,7 +42,7 @@ impl Status {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Clone)]
 struct Pr {
     status: Status,
     number: i64,
@@ -66,200 +66,6 @@ impl From<PrDescription> for Pr {
         }
     }
 }
-
-struct PollerBuilder {
-    client: GitHubClient,
-    sleep_time: Option<u64>,
-    handle: Option<AppHandle>,
-}
-
-impl PollerBuilder {
-    fn with_sleep_time(mut self, sleep_time: u64) -> Self {
-        self.sleep_time = Some(sleep_time);
-        self
-    }
-
-    fn with_handle(mut self, handle: AppHandle) -> Self {
-        self.handle = Some(handle);
-        self
-    }
-
-    fn build(self) -> eyre::Result<Poller> {
-        let sleep_time = self
-            .sleep_time
-            .ok_or(eyre::eyre!("no sleep time provided"))?;
-        let handle = self.handle.ok_or(eyre::eyre!("no handle provided"))?;
-        let (tx, rx) = mpsc::channel();
-        Ok(Poller {
-            client: self.client,
-            prs: Vec::new(),
-            sleep_time: Duration::from_secs(sleep_time),
-            handle,
-            inbox: rx,
-            outbox: tx,
-        })
-    }
-
-    fn new(client: GitHubClient) -> Self {
-        Self {
-            client,
-            sleep_time: None,
-            handle: None,
-        }
-    }
-}
-
-struct PollerHandle {
-    outbox: Sender<Command>,
-}
-
-struct Poller {
-    client: GitHubClient,
-    prs: Vec<Pr>,
-    sleep_time: Duration,
-    handle: AppHandle,
-    outbox: Sender<Command>,
-    inbox: Receiver<Command>,
-}
-
-impl Poller {
-    fn handle(&self) -> PollerHandle {
-        let outbox = self.outbox.clone();
-        PollerHandle { outbox }
-    }
-
-    fn builder(client: GitHubClient) -> PollerBuilder {
-        // TODO: enumerate workflows on startup and use cache?
-        PollerBuilder::new(client)
-    }
-
-    fn add(&mut self, pr: impl Into<Pr>) {
-        self.prs.push(pr.into());
-    }
-
-    fn start(&mut self) -> eyre::Result<()> {
-        loop {
-            for pr in &mut self.prs {
-                let span = tracing::debug_span!("", pr = ?pr.number);
-                let _guard = span.enter();
-
-                if pr.status.is_terminal() {
-                    tracing::debug!("skipping finished job");
-                    continue;
-                }
-
-                // fetch pr branch
-                tracing::debug!("fetching pr info");
-                let pr_info: GetPullRequestResponse = self
-                    .client
-                    .get(
-                        format!(
-                            "https://api.github.com/repos/{}/{}/pulls/{}",
-                            &pr.owner, &pr.repo, &pr.number
-                        ),
-                        None::<()>,
-                    )
-                    .wrap_err("fetching branch info")?;
-
-                // fetch workflow runs for branch
-                tracing::debug!("fetching workflow runs");
-                let GetWorkflowRunsResponse { mut workflow_runs } = self
-                    .client
-                    .get(
-                        format!(
-                            "https://api.github.com/repos/{}/{}/actions/workflows/{}/runs",
-                            &pr.owner, &pr.repo, EXT_TESTS_NUMBER
-                        ),
-                        Some(GetWorkflowRunsQueryArgs {
-                            branch: pr_info.head.branch.clone(),
-                        }),
-                    )
-                    .wrap_err("fetching workflow runs")?;
-                workflow_runs.sort_by_key(|k| k.run_number);
-                let Some(run) = workflow_runs.pop() else {
-                    // TODO
-                    eyre::bail!("no workflow runs found");
-                };
-
-                tracing::debug!(run_id = %run.id, "got latest run");
-
-                // TODO: only if the run is in progress
-                // get run jobs
-                tracing::debug!("fetching jobs for run");
-                let GetRunJobsResponse { jobs } = self
-                    .client
-                    .get(
-                        format!(
-                            "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
-                            pr.owner, pr.repo, run.id
-                        ),
-                        None::<()>,
-                    )
-                    .wrap_err("fetching run jobs")?;
-
-                // DEBUG
-                // let mut f = std::fs::File::create("in-progress-jobs.json").unwrap();
-                // if let Err(e) = serde_json::to_writer_pretty(&mut f, &jobs) {
-                //     tracing::warn!(error = ?e, "error saving in-progress job JSON state");
-                // }
-
-                tracing::debug!("updating PR state");
-                match run.status.as_str() {
-                    "completed" => match run.conclusion.as_deref() {
-                        Some("failure") => {
-                            tracing::debug!(before = ?pr.status, after = ?Status::Failed, "updating status");
-                            pr.status = Status::Failed;
-                        }
-                        Some("success") => {
-                            tracing::debug!(before = ?pr.status, after = ?Status::Succeeded, "updating status");
-                            pr.status = Status::Succeeded;
-                        }
-                        other => todo!(
-                            "unhandled combination of status: completed and conclusion: {other:?}"
-                        ),
-                    },
-                    "queued" => {
-                        let new_status = Status::Queued;
-                        tracing::debug!(before = ?pr.status, after = ?new_status, "updating status");
-                        pr.status = new_status;
-                    }
-                    "in_progress" => {
-                        // TODO: work out completion percentage
-                        let progress = calculate_progress(&jobs).unwrap_or(0.0);
-                        let new_status = Status::InProgress(progress);
-                        tracing::debug!(before = ?pr.status, after = ?new_status, "updating status");
-                        pr.status = new_status;
-                    }
-                    other => todo!("unhandled status: {other}"),
-                }
-                tracing::debug!("finished");
-            }
-            std::thread::sleep(self.sleep_time);
-        }
-    }
-}
-
-// fn main() -> eyre::Result<()> {
-//     color_eyre::install().unwrap();
-//     tracing_subscriber::fmt::init();
-
-//     let args = Args::parse();
-
-//     let client = GitHubClient::from_env().unwrap();
-//     let mut poller = Poller::builder(client)
-//         .with_sleep_time(args.sleep_time)
-//         .build()
-//         .wrap_err("invalid poller configuration")?;
-//     poller.add(PrDescription {
-//         number: 3375,
-//         repo: "localstack-ext".to_string(),
-//         owner: "localstack".to_string(),
-//     });
-
-//     poller.start().wrap_err("running poller")?;
-
-//     Ok(())
-// }
 
 use poller_async::Command;
 use serde::Serialize;

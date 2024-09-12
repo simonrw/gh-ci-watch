@@ -2,9 +2,8 @@
 
 use color_eyre::eyre::{self, Context};
 use reqwest::{
-    blocking::Client,
     header::{HeaderMap, HeaderValue, USER_AGENT},
-    IntoUrl,
+    Client, IntoUrl,
 };
 use serde::{Deserialize, Serialize};
 
@@ -77,6 +76,7 @@ pub struct GetRunJobsResponse {
 
 // Query client
 
+#[derive(Clone)]
 pub struct GitHubClient {
     client: Client,
     token: String,
@@ -90,14 +90,14 @@ impl GitHubClient {
         let mut headers = HeaderMap::new();
         headers.append(USER_AGENT, HeaderValue::from_static("gh-ci-watch"));
 
-        let client = reqwest::blocking::Client::builder()
+        let client = reqwest::Client::builder()
             .default_headers(headers)
             .build()
             .wrap_err("constructing HTTP client")?;
         Ok(Self { client, token })
     }
 
-    pub fn get<T, Q>(&self, url: impl IntoUrl, query: Option<Q>) -> eyre::Result<T>
+    pub async fn get<T, Q>(&self, url: impl IntoUrl, query: Option<Q>) -> eyre::Result<T>
     where
         T: for<'de> serde::Deserialize<'de>,
         Q: Serialize,
@@ -112,12 +112,12 @@ impl GitHubClient {
         }
 
         tracing::debug!("sending http request");
-        let response = builder.send().wrap_err("sending GET request")?;
+        let response = builder.send().await.wrap_err("sending GET request")?;
         if let Err(e) = response.error_for_status_ref() {
             tracing::warn!(error = %e, "bad status from GitHub");
             eyre::bail!("bad error status: {e}");
         }
         tracing::debug!("got http response");
-        response.json().wrap_err("decoding JSON response")
+        response.json().await.wrap_err("decoding JSON response")
     }
 }
