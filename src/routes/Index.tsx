@@ -2,8 +2,10 @@ import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
 import { useEffect, useState } from "react";
 
+type Status = "Queued" | { InProgress: number } | "Succeeded" | "Failed";
+
 type Pr = {
-  status: string;
+  status: Status;
   number: number;
   repo: string;
   owner: string;
@@ -71,11 +73,12 @@ export default function Index() {
   );
 }
 
-function PrStatus({ pr }) {
+function PrStatus({ pr }: { pr: Pr }) {
+  const status = JSON.stringify(pr.status);
   return (
     <div>
       <p>
-        {pr.number} {pr.status}
+        {pr.owner}/{pr.repo} #{pr.number} {status}
       </p>
     </div>
   );

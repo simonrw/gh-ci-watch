@@ -11,7 +11,7 @@ use crate::github::{
     GetPullRequestResponse, GetRunJobsResponse, GetWorkflowRunsQueryArgs, GetWorkflowRunsResponse,
     GitHubClient,
 };
-use crate::{Pr, Status, EXT_TESTS_NUMBER};
+use crate::{calculate_progress, Pr, Status, EXT_TESTS_NUMBER};
 
 static OWNER: &str = "localstack";
 static REPO: &str = "localstack-ext";
@@ -148,7 +148,7 @@ impl Poller {
                     // TODO: only if the run is in progress
                     // get run jobs
                     tracing::debug!("fetching jobs for run");
-                    let GetRunJobsResponse { jobs: _ } = client
+                    let GetRunJobsResponse { jobs } = client
                         .get(
                             format!(
                                 "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
@@ -194,12 +194,14 @@ impl Poller {
                             // pr.status = new_status;
                         }
                         "in_progress" => {
-                            // TODO: work out completion percentage
-                            todo!()
-                            // let progress = calculate_progress(&jobs).unwrap_or(0.0);
-                            // let new_status = Status::InProgress(progress);
-                            // tracing::debug!(before = ?pr.status, after = ?new_status, "updating status");
-                            // pr.status = new_status;
+                            let progress = calculate_progress(&jobs).unwrap_or(0.0);
+                            let status = Status::InProgress(progress);
+                            Ok(Pr {
+                                status,
+                                number: pr_number,
+                                repo: REPO.to_string(),
+                                owner: OWNER.to_string(),
+                            })
                         }
                         other => todo!("unhandled status: {other}"),
                     }
