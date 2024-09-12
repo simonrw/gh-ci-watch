@@ -44,7 +44,7 @@ export function InputForm(props: InputFormProps) {
       owner: values.owner,
       repo: values.repo,
     });
-    form.reset();
+    form.resetField("pr");
   }
 
   return (
