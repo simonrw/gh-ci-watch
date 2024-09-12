@@ -70,25 +70,25 @@ impl Fetcher {
         // }
 
         tracing::debug!("updating PR state");
-        match run.status.as_str() {
+        let pr_result = match run.status.as_str() {
             "completed" => match run.conclusion.as_deref() {
                 Some("failure") => {
-                    Ok(Pr {
+                    Pr {
                         status: Status::Failed,
-                    })
+                    }
                     // tracing::debug!(before = ?pr.status, after = ?Status::Failed, "updating status");
                     // pr.status = Status::Failed;
                 }
-                Some("success") => Ok(Pr {
+                Some("success") => Pr {
                     status: Status::Succeeded,
-                }),
+                },
                 other => {
                     todo!("unhandled combination of status: completed and conclusion: {other:?}")
                 }
             },
-            "queued" => Ok(Pr {
+            "queued" => Pr {
                 status: Status::Queued,
-            }),
+            },
             "in_progress" => {
                 // get run jobs
                 tracing::debug!("fetching jobs for run");
@@ -106,10 +106,14 @@ impl Fetcher {
 
                 let progress = calculate_progress(&jobs).unwrap_or(0.0);
                 let status = Status::InProgress(progress);
-                Ok(Pr { status })
+                Pr { status }
             }
             other => todo!("unhandled status: {other}"),
-        }
+        };
+
+        tracing::debug!(pr = %pr_number, status = ?pr_result, "PR result");
+
+        Ok(pr_result)
     }
 }
 
