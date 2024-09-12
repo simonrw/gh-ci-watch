@@ -104,7 +104,6 @@ impl Poller {
         let _ = self.internal_queue.send(Command::Tick).await;
     }
 
-    #[tracing::instrument(skip(self))]
     async fn update_pr_statuses(&self) -> eyre::Result<Vec<Pr>> {
         tracing::debug!("updating PR statuses");
         let mut set = JoinSet::new();
@@ -112,107 +111,104 @@ impl Poller {
         for pr_number in self.prs.clone() {
             let client = self.client.clone();
             let span = tracing::debug_span!("fetch task", %pr_number);
-            let _abort = set.spawn(
-                async move {
-                    tracing::debug!("fetching pr info");
-                    let pr_info: GetPullRequestResponse = client
-                        .get(
-                            format!(
-                                "https://api.github.com/repos/{}/{}/pulls/{}",
-                                OWNER, REPO, pr_number,
-                            ),
-                            None::<()>,
-                        )
-                        .await
-                        .wrap_err("fetching branch info")?;
-
-                    // fetch workflow runs for branch
-                    tracing::debug!("fetching workflow runs");
-                    let GetWorkflowRunsResponse { mut workflow_runs } = client
-                        .get(
-                            format!(
-                                "https://api.github.com/repos/{}/{}/actions/workflows/{}/runs",
-                                OWNER, REPO, EXT_TESTS_NUMBER
-                            ),
-                            Some(GetWorkflowRunsQueryArgs {
-                                branch: pr_info.head.branch.clone(),
-                            }),
-                        )
-                        .await
-                        .wrap_err("fetching workflow runs")?;
-                    workflow_runs.sort_by_key(|k| k.run_number);
-                    let Some(run) = workflow_runs.pop() else {
-                        // TODO
-                        eyre::bail!("no workflow runs found");
-                    };
-
-                    tracing::debug!(run_id = %run.id, "got latest run");
-
-                    // DEBUG
-                    // let mut f = std::fs::File::create("in-progress-jobs.json").unwrap();
-                    // if let Err(e) = serde_json::to_writer_pretty(&mut f, &jobs) {
-                    //     tracing::warn!(error = ?e, "error saving in-progress job JSON state");
-                    // }
-
-                    tracing::debug!("updating PR state");
-                    match run.status.as_str() {
-                        "completed" => match run.conclusion.as_deref() {
-                            Some("failure") => {
-                                Ok(Pr {
-                                    status: Status::Failed,
-                                    number: pr_number,
-                                    repo: REPO.to_string(),
-                                    owner: OWNER.to_string(),
-                                })
-                                // tracing::debug!(before = ?pr.status, after = ?Status::Failed, "updating status");
-                                // pr.status = Status::Failed;
-                            }
-                            Some("success") => Ok(Pr {
-                                status: Status::Succeeded,
-                                number: pr_number,
-                                repo: REPO.to_string(),
-                                owner: OWNER.to_string(),
-                            }),
-                            other => todo!(
-                            "unhandled combination of status: completed and conclusion: {other:?}"
+            let _abort = set.spawn(async move {
+                tracing::debug!("fetching pr info");
+                let pr_info: GetPullRequestResponse = client
+                    .get(
+                        format!(
+                            "https://api.github.com/repos/{}/{}/pulls/{}",
+                            OWNER, REPO, pr_number,
                         ),
-                        },
-                        "queued" => Ok(Pr {
-                            status: Status::Queued,
-                            number: pr_number,
-                            repo: REPO.to_string(),
-                            owner: OWNER.to_string(),
-                        }),
-                        "in_progress" => {
-                            // get run jobs
-                            tracing::debug!("fetching jobs for run");
-                            let GetRunJobsResponse { jobs } = client
-                                .get(
-                                    format!(
-                                        "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
-                                        OWNER, REPO, run.id
-                                    ),
-                                    None::<()>,
-                                )
-                                .await
-                                .wrap_err("fetching run jobs")?;
+                        None::<()>,
+                    )
+                    .await
+                    .wrap_err("fetching branch info")?;
 
-                            let progress = calculate_progress(&jobs).unwrap_or(0.0);
-                            let status = Status::InProgress(progress);
+                // fetch workflow runs for branch
+                tracing::debug!("fetching workflow runs");
+                let GetWorkflowRunsResponse { mut workflow_runs } = client
+                    .get(
+                        format!(
+                            "https://api.github.com/repos/{}/{}/actions/workflows/{}/runs",
+                            OWNER, REPO, EXT_TESTS_NUMBER
+                        ),
+                        Some(GetWorkflowRunsQueryArgs {
+                            branch: pr_info.head.branch.clone(),
+                        }),
+                    )
+                    .await
+                    .wrap_err("fetching workflow runs")?;
+                workflow_runs.sort_by_key(|k| k.run_number);
+                let Some(run) = workflow_runs.pop() else {
+                    // TODO
+                    eyre::bail!("no workflow runs found");
+                };
+
+                tracing::debug!(run_id = %run.id, "got latest run");
+
+                // DEBUG
+                // let mut f = std::fs::File::create("in-progress-jobs.json").unwrap();
+                // if let Err(e) = serde_json::to_writer_pretty(&mut f, &jobs) {
+                //     tracing::warn!(error = ?e, "error saving in-progress job JSON state");
+                // }
+
+                tracing::debug!("updating PR state");
+                match run.status.as_str() {
+                    "completed" => match run.conclusion.as_deref() {
+                        Some("failure") => {
                             Ok(Pr {
-                                status,
+                                status: Status::Failed,
                                 number: pr_number,
                                 repo: REPO.to_string(),
                                 owner: OWNER.to_string(),
                             })
+                            // tracing::debug!(before = ?pr.status, after = ?Status::Failed, "updating status");
+                            // pr.status = Status::Failed;
                         }
-                        other => todo!("unhandled status: {other}"),
+                        Some("success") => Ok(Pr {
+                            status: Status::Succeeded,
+                            number: pr_number,
+                            repo: REPO.to_string(),
+                            owner: OWNER.to_string(),
+                        }),
+                        other => todo!(
+                            "unhandled combination of status: completed and conclusion: {other:?}"
+                        ),
+                    },
+                    "queued" => Ok(Pr {
+                        status: Status::Queued,
+                        number: pr_number,
+                        repo: REPO.to_string(),
+                        owner: OWNER.to_string(),
+                    }),
+                    "in_progress" => {
+                        // get run jobs
+                        tracing::debug!("fetching jobs for run");
+                        let GetRunJobsResponse { jobs } = client
+                            .get(
+                                format!(
+                                    "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
+                                    OWNER, REPO, run.id
+                                ),
+                                None::<()>,
+                            )
+                            .await
+                            .wrap_err("fetching run jobs")?;
+
+                        let progress = calculate_progress(&jobs).unwrap_or(0.0);
+                        let status = Status::InProgress(progress);
+                        Ok(Pr {
+                            status,
+                            number: pr_number,
+                            repo: REPO.to_string(),
+                            owner: OWNER.to_string(),
+                        })
                     }
-                    // tracing::debug!("finished");
-                    // Ok(())
+                    other => todo!("unhandled status: {other}"),
                 }
-                .instrument(span),
-            );
+                // tracing::debug!("finished");
+                // Ok(())
+            });
         }
 
         let mut pr_details = Vec::new();
