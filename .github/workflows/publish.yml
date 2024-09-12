@@ -31,6 +31,10 @@ jobs:
         with:
           node-version: lts/*
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
