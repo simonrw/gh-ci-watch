@@ -69,6 +69,7 @@ impl Poller {
         match cmd {
             Command::AddPr(number) => {
                 self.prs.push(number);
+                self.tick().await;
             }
             Command::RemovePr(number) => {
                 // TODO: remove the clone
@@ -78,9 +79,11 @@ impl Poller {
                     .into_iter()
                     .filter(|pr| *pr != number)
                     .collect();
+                self.tick().await;
             }
             Command::ClearPrs => {
                 self.prs.clear();
+                self.tick().await;
             }
             Command::Tick => {
                 tracing::debug!("got heartbeat tick");
@@ -145,20 +148,6 @@ impl Poller {
 
                     tracing::debug!(run_id = %run.id, "got latest run");
 
-                    // TODO: only if the run is in progress
-                    // get run jobs
-                    tracing::debug!("fetching jobs for run");
-                    let GetRunJobsResponse { jobs } = client
-                        .get(
-                            format!(
-                                "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
-                                OWNER, REPO, run.id
-                            ),
-                            None::<()>,
-                        )
-                        .await
-                        .wrap_err("fetching run jobs")?;
-
                     // DEBUG
                     // let mut f = std::fs::File::create("in-progress-jobs.json").unwrap();
                     // if let Err(e) = serde_json::to_writer_pretty(&mut f, &jobs) {
@@ -169,31 +158,45 @@ impl Poller {
                     match run.status.as_str() {
                         "completed" => match run.conclusion.as_deref() {
                             Some("failure") => {
-                                todo!()
-                                // tracing::debug!(before = ?pr.status, after = ?Status::Failed, "updating status");
-                                // pr.status = Status::Failed;
-                            }
-                            Some("success") => {
                                 Ok(Pr {
-                                    status: Status::Succeeded,
+                                    status: Status::Failed,
                                     number: pr_number,
                                     repo: REPO.to_string(),
                                     owner: OWNER.to_string(),
                                 })
-                                // tracing::debug!(before = ?pr.status, after = ?Status::Succeeded, "updating status");
-                                // pr.status = Status::Succeeded;
+                                // tracing::debug!(before = ?pr.status, after = ?Status::Failed, "updating status");
+                                // pr.status = Status::Failed;
                             }
+                            Some("success") => Ok(Pr {
+                                status: Status::Succeeded,
+                                number: pr_number,
+                                repo: REPO.to_string(),
+                                owner: OWNER.to_string(),
+                            }),
                             other => todo!(
                             "unhandled combination of status: completed and conclusion: {other:?}"
                         ),
                         },
-                        "queued" => {
-                            todo!()
-                            // let new_status = Status::Queued;
-                            // tracing::debug!(before = ?pr.status, after = ?new_status, "updating status");
-                            // pr.status = new_status;
-                        }
+                        "queued" => Ok(Pr {
+                            status: Status::Queued,
+                            number: pr_number,
+                            repo: REPO.to_string(),
+                            owner: OWNER.to_string(),
+                        }),
                         "in_progress" => {
+                            // get run jobs
+                            tracing::debug!("fetching jobs for run");
+                            let GetRunJobsResponse { jobs } = client
+                                .get(
+                                    format!(
+                                        "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
+                                        OWNER, REPO, run.id
+                                    ),
+                                    None::<()>,
+                                )
+                                .await
+                                .wrap_err("fetching run jobs")?;
+
                             let progress = calculate_progress(&jobs).unwrap_or(0.0);
                             let status = Status::InProgress(progress);
                             Ok(Pr {

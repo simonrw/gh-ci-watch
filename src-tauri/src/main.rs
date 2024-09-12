@@ -2,11 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use clap::Parser;
-use color_eyre::eyre::{self, Context};
-use github::{
-    GetPullRequestResponse, GetRunJobsResponse, GetWorkflowRunsQueryArgs, GetWorkflowRunsResponse,
-    GitHubClient, RunJob,
-};
+use color_eyre::eyre;
+use github::RunJob;
 
 mod github;
 mod poller_async;
@@ -28,10 +25,10 @@ enum Status {
     InProgress(f32),
     Succeeded,
     Failed,
-    Unknown,
 }
 
 impl Status {
+    // TODO: cache the terminal values
     fn is_terminal(&self) -> bool {
         matches!(self, Status::Succeeded | Status::Failed)
     }
@@ -45,26 +42,8 @@ struct Pr {
     owner: String,
 }
 
-struct PrDescription {
-    number: u64,
-    repo: String,
-    owner: String,
-}
-
-impl From<PrDescription> for Pr {
-    fn from(value: PrDescription) -> Self {
-        Self {
-            number: value.number,
-            repo: value.repo,
-            owner: value.owner,
-            status: Status::Unknown,
-        }
-    }
-}
-
-use poller_async::Command;
 use serde::Serialize;
-use tauri::{AppHandle, Manager, State};
+use tauri::{Manager, State};
 // use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu};
 // use tauri_plugin_positioner::{Position, WindowExt};
 
