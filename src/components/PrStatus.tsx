@@ -11,6 +11,17 @@ import {
 import { ProgressReport } from "./ProgressReport";
 import { Button } from "./ui/button";
 import { Trash } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "./ui/alert-dialog";
 
 type PrStatusResponse = {
   status: Status;
@@ -93,9 +104,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
               {pr.owner}/{pr.repo}
             </span>
             <span>
-              <Button variant="destructive" onClick={() => removePr(pr.number)}>
-                <Trash className="h-4 w-4" />
-              </Button>
+              <DeleteButton pr={pr.number} removePr={removePr} />
             </span>
           </div>
         </CardTitle>
@@ -105,5 +114,36 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
         <ProgressReport status={status!} />
       </CardContent>
     </Card>
+  );
+}
+
+type DeleteButtonProps = {
+  pr: number;
+  removePr: (prNumber: number) => void;
+};
+
+function DeleteButton({ pr, removePr }: DeleteButtonProps) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive">
+          <Trash className="h-4 w-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action will stop tracking the progress of the PR.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => removePr(pr)}>
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
