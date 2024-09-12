@@ -17,6 +17,10 @@ export default function Index() {
     setPrs((prs) => [...prs, pr]);
   };
 
+  const removePr = (prNumber: number) => {
+    setPrs((prs) => prs.filter((pr) => pr.number !== prNumber));
+  };
+
   return (
     <div className="flex flex-col p-4 gap-8">
       <div className="flex items-center justify-between">
@@ -25,7 +29,7 @@ export default function Index() {
         </h1>
         <div className="flex items-center gap-4">
           <Popover>
-            <PopoverTrigger>
+            <PopoverTrigger asChild>
               <Button>Add PR</Button>
             </PopoverTrigger>
             <PopoverContent>
@@ -37,7 +41,7 @@ export default function Index() {
       </div>
       <div className="flex flex-col gap-2">
         {prs.map((pr) => {
-          return <PrStatus key={pr.number} pr={pr} />;
+          return <PrStatus key={pr.number} pr={pr} removePr={removePr} />;
         })}
       </div>
     </div>

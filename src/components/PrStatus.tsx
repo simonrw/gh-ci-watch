@@ -9,6 +9,8 @@ import {
   CardTitle,
 } from "./ui/card";
 import { ProgressReport } from "./ProgressReport";
+import { Button } from "./ui/button";
+import { Trash } from "lucide-react";
 
 type PrStatusResponse = {
   status: Status;
@@ -33,7 +35,12 @@ const statusToString = (status: Status): string => {
   }
 };
 
-export function PrStatus({ pr }: { pr: Pr }) {
+type PrStatusProps = {
+  pr: Pr;
+  removePr: (prNumber: number) => void;
+};
+
+export function PrStatus({ pr, removePr }: PrStatusProps) {
   const {
     data: status,
     isLoading,
@@ -81,7 +88,16 @@ export function PrStatus({ pr }: { pr: Pr }) {
     <Card className={borderColor}>
       <CardHeader>
         <CardTitle>
-          {pr.owner}/{pr.repo}
+          <div className="flex justify-between">
+            <span>
+              {pr.owner}/{pr.repo}
+            </span>
+            <span>
+              <Button variant="destructive" onClick={() => removePr(pr.number)}>
+                <Trash className="h-4 w-4" />
+              </Button>
+            </span>
+          </div>
         </CardTitle>
         <CardDescription>#{pr.number}</CardDescription>
       </CardHeader>
