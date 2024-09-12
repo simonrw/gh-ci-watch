@@ -1,5 +1,5 @@
 export type Pr = {
-  status: Status | null;
+  status: Status;
   number: number;
   repo: string;
   owner: string;

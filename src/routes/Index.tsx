@@ -5,6 +5,7 @@ import { PrStatus } from "../components/PrStatus";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/ThemeModeToggle";
 import { Input } from "@/components/ui/input";
+import { InputForm } from "@/components/InputForm";
 
 function isNumeric(str: string) {
   if (typeof str != "string") return false; // we only process strings!
@@ -16,51 +17,9 @@ function isNumeric(str: string) {
 
 export default function Index() {
   const [prs, setPrs] = useState<Pr[]>([]);
-  const [owner, setOwner] = useState("");
-  const [repo, setRepo] = useState("");
-  const [text, setText] = useState("");
 
-  useEffect(() => {
-    console.log("setting up listener");
-    const unlisten = listen("state", (event) => {
-      const { payload: prs } = event as { payload: Pr[] };
-      console.log({ prs });
-      setPrs(prs);
-    });
-
-    return () => {
-      unlisten.then((f) => {
-        console.log("removing listener");
-        f();
-      });
-    };
-  }, []);
-
-  const addPr = () => {
-    // validation
-    if (!owner) {
-      console.error("no owner");
-      return;
-    }
-
-    if (!repo) {
-      console.error("no repo");
-      return;
-    }
-
-    if (!text) {
-      console.error("no text");
-      return;
-    }
-
-    const newPr: Pr = {
-      owner,
-      repo,
-      number: parseInt(text),
-      status: "Unknown",
-    };
-    console.log("Adding pr");
-    setPrs((prs) => [...prs, newPr]);
+  const addPr = (pr: Pr) => {
+    setPrs((prs) => [...prs, pr]);
   };
 
   return (
@@ -71,42 +30,7 @@ export default function Index() {
         </h1>
         <ModeToggle />
       </div>
-      <div className="flex flex-col gap-4">
-        <Input
-          id="owner"
-          placeholder="Owner"
-          value={owner}
-          onChange={(e) => setOwner(e.target.value)}
-        ></Input>
-        <Input
-          id="repo"
-          placeholder="Repo"
-          value={repo}
-          onChange={(e) => setRepo(e.target.value)}
-        ></Input>
-        <Input
-          id="pr"
-          placeholder="Pr number"
-          type="text"
-          value={text}
-          onChange={(e) => {
-            console.log({ value: e.target.value });
-            if (!isNumeric(e.target.value)) {
-              return;
-            }
-            setText(e.target.value);
-          }}
-        ></Input>
-        <Button
-          onClick={(e) => {
-            e.preventDefault();
-            addPr();
-          }}
-        >
-          Track PR
-        </Button>
-      </div>
-
+      <InputForm addPr={addPr} />
       <div className="flex flex-col gap-2">
         {prs.map((pr) => {
           return <PrStatus key={pr.number} pr={pr} />;
