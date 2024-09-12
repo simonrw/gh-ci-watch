@@ -5,9 +5,52 @@ export type Pr = {
   owner: string;
 };
 
-export type Status =
+export type RawStatus =
   | "Queued"
   | { InProgress: number }
   | "Succeeded"
   | "Failed"
   | "Unknown";
+
+export type QueuedStatus = {
+  kind: "queued";
+};
+
+export type InProgressStatus = {
+  kind: "in-progress";
+  completion: number;
+};
+
+export type SucceededStatus = {
+  kind: "succeeded";
+};
+
+export type FailedStatus = {
+  kind: "failed";
+};
+
+export type UnknownStatus = {
+  kind: "unknown";
+};
+
+export type Status =
+  | QueuedStatus
+  | InProgressStatus
+  | SucceededStatus
+  | FailedStatus
+  | UnknownStatus;
+
+export const statusFromRaw = (raw: RawStatus): Status => {
+  switch (raw) {
+    case "Queued":
+      return { kind: "queued" };
+    case "Succeeded":
+      return { kind: "succeeded" };
+    case "Failed":
+      return { kind: "failed" };
+    case "Unknown":
+      return { kind: "unknown" };
+    default:
+      return { kind: "in-progress", completion: raw.InProgress };
+  }
+};

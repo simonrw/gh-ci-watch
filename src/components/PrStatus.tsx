@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Pr, Status } from "../types";
+import { Pr, RawStatus, Status, statusFromRaw } from "../types";
 import { invoke } from "@tauri-apps/api/tauri";
 import {
   Card,
@@ -24,26 +24,7 @@ import {
 } from "./ui/alert-dialog";
 
 type PrStatusResponse = {
-  status: Status;
-};
-
-const statusToString = (status: Status): string => {
-  switch (status) {
-    case "Queued":
-      return "Queued";
-    case "Succeeded":
-      return "Succeeded";
-    case "Failed":
-      return "Failed";
-    case "Unknown":
-      return "Unknown";
-    default:
-      if (status && status["InProgress"]) {
-        return `InProgress ${status.InProgress}%`;
-      }
-
-      return "??";
-  }
+  status: RawStatus;
 };
 
 type PrStatusProps = {
@@ -64,7 +45,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
         repo: pr.repo,
         prNumber: pr.number,
       });
-      return status;
+      return statusFromRaw(status);
     },
     refetchInterval: 5000,
   });
@@ -86,11 +67,11 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
     );
 
   let borderColor = "";
-  switch (status!) {
-    case "Succeeded":
+  switch (status!.kind) {
+    case "succeeded":
       borderColor = "border border-green-500";
       break;
-    case "Failed":
+    case "failed":
       borderColor = "border border-red-500";
       break;
   }

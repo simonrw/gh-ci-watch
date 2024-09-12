@@ -39,7 +39,7 @@ export function InputForm(props: InputFormProps) {
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     props.addPr({
-      status: "Unknown",
+      status: { kind: "unknown" },
       number: values.pr,
       owner: values.owner,
       repo: values.repo,

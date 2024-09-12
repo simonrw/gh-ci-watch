@@ -6,7 +6,7 @@ type ProgressReportProps = {
 };
 
 export function ProgressReport({ status }: ProgressReportProps) {
-  if (status && status["InProgress"]) {
+  if (status && "InProgress" in status) {
     return <p>In progress</p>;
   } else {
     return <Progress value={100}></Progress>;
