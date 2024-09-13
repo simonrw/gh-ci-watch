@@ -6,9 +6,10 @@ type ProgressReportProps = {
 };
 
 export function ProgressReport({ status }: ProgressReportProps) {
-  if (status && "InProgress" in status) {
-    return <p>In progress</p>;
-  } else {
-    return <Progress value={100}></Progress>;
+  let statusValue = 100;
+  if (status.kind === "in-progress") {
+    statusValue = status.completion * 100;
   }
+  console.log({ statusValue });
+  return <Progress value={statusValue}></Progress>;
 }
