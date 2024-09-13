@@ -1,4 +1,5 @@
 import { Pr } from "@/types";
+import { createContext } from "react";
 
 const STORAGE_KEY = "store";
 
@@ -11,6 +12,12 @@ export class Storage {
 
   public addPr(pr: Pr): void {
     this.prs.push(pr);
+    this.save();
+  }
+
+  public removePr(prNumber: number): void {
+    this.prs = this.prs.filter(pr => pr.number !== prNumber);
+    this.save();
   }
 
   public save(): void {
@@ -28,3 +35,5 @@ export class Storage {
     return new Storage(state);
   }
 }
+
+export const StorageContext = createContext(Storage.load());

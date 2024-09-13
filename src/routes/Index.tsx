@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { Pr } from "../types";
 import { PrStatus } from "../components/PrStatus";
 import { Button } from "@/components/ui/button";
@@ -9,16 +9,22 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { StorageContext } from "@/lib/storage";
 
 export default function Index() {
-  const [prs, setPrs] = useState<Pr[]>([]);
+
+  const storage = useContext(StorageContext);
+
+  const [prs, setPrs] = useState<Pr[]>(storage.prs);
 
   const addPr = (pr: Pr) => {
     setPrs((prs) => [...prs, pr]);
+    storage.addPr(pr);
   };
 
   const removePr = (prNumber: number) => {
     setPrs((prs) => prs.filter((pr) => pr.number !== prNumber));
+    storage.removePr(prNumber);
   };
 
   return (
