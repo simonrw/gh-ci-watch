@@ -10,6 +10,7 @@ import {
 } from "./ui/card";
 import { ProgressReport } from "./ProgressReport";
 import { DeleteButton } from "./DeleteButton";
+import { useState } from "react";
 
 type PrStatusResponse = {
   status: RawStatus;
@@ -21,10 +22,12 @@ type PrStatusProps = {
 };
 
 export function PrStatus({ pr, removePr }: PrStatusProps) {
+  const [prevStatus, setPrevStatus] = useState<Status | null>(null);
+
   const {
     data: status,
     isLoading,
-    isError,
+    error,
   } = useQuery<Status>({
     queryKey: ["pr", pr.number],
     queryFn: async () => {
@@ -47,12 +50,26 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
       </div>
     );
 
-  if (isError)
+  if (error)
     return (
       <div>
-        <p>Error</p>
+        <p>Error: {error.toString()}</p>
       </div>
     );
+
+  if (status! !== prevStatus) {
+    setPrevStatus(status!);
+
+    if (status!.kind === "succeeded") {
+      new Notification("PR action succeeded!", {
+        body: "The PR completed successfully",
+      });
+    } else if (status!.kind === "failed") {
+      new Notification("PR action failed", {
+        body: "The PR completed did not succeed",
+      });
+    }
+  }
 
   let borderColor = "";
   switch (status!.kind) {
