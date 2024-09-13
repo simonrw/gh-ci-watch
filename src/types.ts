@@ -54,3 +54,9 @@ export const statusFromRaw = (raw: RawStatus): Status => {
       return { kind: "in-progress", completion: raw.InProgress };
   }
 };
+
+export type StatusPayload = {
+  status: Status;
+  title: string;
+  description: string;
+};
