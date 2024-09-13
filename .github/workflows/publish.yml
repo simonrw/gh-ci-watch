@@ -62,7 +62,18 @@ jobs:
       - name: install frontend dependencies
         run: pnpm install # change this to npm, pnpm or bun depending on which one you use.
 
+        # on a PR just build the app
       - uses: tauri-apps/tauri-action@v0
+        if: github.ref != 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ${{ matrix.args }}
+          tauriScript: pnpm tauri
+
+        # on the main branch, publish the release
+      - uses: tauri-apps/tauri-action@v0
+        if: github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
