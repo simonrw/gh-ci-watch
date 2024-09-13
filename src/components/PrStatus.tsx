@@ -9,19 +9,6 @@ import {
   CardTitle,
 } from "./ui/card";
 import { ProgressReport } from "./ProgressReport";
-import { Button } from "./ui/button";
-import { Trash } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "./ui/alert-dialog";
 import { DeleteButton } from "./DeleteButton";
 
 type PrStatusResponse = {
@@ -48,7 +35,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
       });
       return statusFromRaw(status);
     },
-    refetchInterval: 5000,
+    refetchInterval: 10000,
   });
 
   if (isLoading)
