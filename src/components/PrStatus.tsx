@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { Pr, RawStatus, Status, statusFromRaw } from "../types";
+import { Pr, RawStatus, Status, statusFromRaw, StatusPayload } from "../types";
 import { invoke } from "@tauri-apps/api/tauri";
+import Markdown from 'react-markdown';
 import {
   Card,
   CardContent,
@@ -11,9 +12,13 @@ import {
 import { ProgressReport } from "./ProgressReport";
 import { DeleteButton } from "./DeleteButton";
 import { useState } from "react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
+import { ChevronsUpDown } from "lucide-react";
 
 type PrStatusResponse = {
   status: RawStatus;
+  title: string;
+  description: string;
 };
 
 type PrStatusProps = {
@@ -28,15 +33,15 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
     data: status,
     isLoading,
     error,
-  } = useQuery<Status>({
+  } = useQuery<StatusPayload>({
     queryKey: ["pr", pr.number],
     queryFn: async () => {
-      const { status } = await invoke<PrStatusResponse>("fetch_status", {
+      const { status, title, description } = await invoke<PrStatusResponse>("fetch_status", {
         owner: pr.owner,
         repo: pr.repo,
         prNumber: pr.number,
       });
-      return statusFromRaw(status);
+      return { status: statusFromRaw(status), title, description };
     },
     refetchInterval: 10000,
   });
@@ -57,14 +62,16 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
       </div>
     );
 
-  if (status! !== prevStatus) {
-    setPrevStatus(status!);
+  console.log({ status });
 
-    if (status!.kind === "succeeded") {
+  if (status!.status !== prevStatus) {
+    setPrevStatus(status!.status);
+
+    if (status!.status.kind === "succeeded") {
       new Notification("PR action succeeded!", {
         body: "The PR completed successfully",
       });
-    } else if (status!.kind === "failed") {
+    } else if (status!.status.kind === "failed") {
       new Notification("PR action failed", {
         body: "The PR completed did not succeed",
       });
@@ -72,7 +79,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
   }
 
   let borderColor = "";
-  switch (status!.kind) {
+  switch (status!.status.kind) {
     case "succeeded":
       borderColor = "border border-green-500";
       break;
@@ -92,18 +99,26 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
       <CardHeader>
         <CardTitle>
           <div className="flex justify-between">
-            <span>
-              {pr.owner}/{pr.repo}
-            </span>
-            <span>
-              <DeleteButton pr={pr.number} removePr={removePr} />
-            </span>
+            <div>
+              <p>{status!.title}</p>
+            </div>
+            <DeleteButton pr={pr.number} removePr={removePr} />
           </div>
         </CardTitle>
-        <CardDescription>#{pr.number}</CardDescription>
+        <CardDescription>
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2">
+              <p>{pr.owner}/{pr.repo} (#{pr.number})</p>
+              <ChevronsUpDown />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <Markdown skipHtml>{status!.description}</Markdown>
+            </CollapsibleContent>
+          </Collapsible>
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <ProgressReport status={status!} />
+        <ProgressReport status={status!.status} />
       </CardContent>
     </Card>
   );

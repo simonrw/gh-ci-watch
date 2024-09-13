@@ -75,12 +75,16 @@ impl Fetcher {
                 Some("failure") => {
                     Pr {
                         status: Status::Failed,
+                        title: pr_info.title,
+                        description: pr_info.description,
                     }
                     // tracing::debug!(before = ?pr.status, after = ?Status::Failed, "updating status");
                     // pr.status = Status::Failed;
                 }
                 Some("success") => Pr {
                     status: Status::Succeeded,
+                    title: pr_info.title,
+                    description: pr_info.description,
                 },
                 other => {
                     todo!("unhandled combination of status: completed and conclusion: {other:?}")
@@ -88,6 +92,8 @@ impl Fetcher {
             },
             "queued" => Pr {
                 status: Status::Queued,
+                title: pr_info.title,
+                description: pr_info.description,
             },
             "in_progress" => {
                 // get run jobs
@@ -106,10 +112,16 @@ impl Fetcher {
 
                 let progress = calculate_progress(&jobs).unwrap_or(0.0);
                 let status = Status::InProgress(progress);
-                Pr { status }
+                Pr {
+                    status,
+                    title: pr_info.title,
+                    description: pr_info.description,
+                }
             }
             "pending" => Pr {
                 status: Status::Queued,
+                title: pr_info.title,
+                description: pr_info.description,
             },
             other => todo!("unhandled status: {other}"),
         };
@@ -156,6 +168,8 @@ pub enum Status {
 #[derive(Debug, Serialize, Clone)]
 pub struct Pr {
     pub status: Status,
+    pub title: String,
+    pub description: String,
 }
 
 #[cfg(test)]
