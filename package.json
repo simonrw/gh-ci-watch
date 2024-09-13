@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "RUST_LOG=menubartest=debug tauri dev",
+    "start:trace": "RUST_LOG=menubartest=trace tauri dev",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",

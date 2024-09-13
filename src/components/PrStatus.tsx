@@ -62,6 +62,9 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
     case "in-progress":
       borderColor = "animate-pulse";
       break;
+    case "queued":
+      borderColor = "animate-pulse";
+      break;
     case "failed":
       borderColor = "border border-red-500";
       break;

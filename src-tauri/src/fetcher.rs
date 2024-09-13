@@ -108,6 +108,9 @@ impl Fetcher {
                 let status = Status::InProgress(progress);
                 Pr { status }
             }
+            "pending" => Pr {
+                status: Status::Queued,
+            },
             other => todo!("unhandled status: {other}"),
         };
 
@@ -137,6 +140,7 @@ fn calculate_progress(jobs: &[RunJob]) -> eyre::Result<f32> {
         }
     }
     // TODO: fallable cast
+    tracing::trace!(%completed_steps, %n_steps_total, "calculated progress percentage");
     Ok(completed_steps / (n_steps_total as f32))
 }
 
