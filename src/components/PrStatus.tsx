@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Pr, RawStatus, Status, statusFromRaw, StatusPayload } from "../types";
 import { invoke } from "@tauri-apps/api/tauri";
+import Markdown from 'react-markdown';
 import {
   Card,
   CardContent,
@@ -111,7 +112,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
               <ChevronsUpDown />
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <p>{status!.description}</p>
+              <Markdown skipHtml>{status!.description}</Markdown>
             </CollapsibleContent>
           </Collapsible>
         </CardDescription>
