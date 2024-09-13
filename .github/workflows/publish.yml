@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 # Only one pull-request triggered run should be executed at a time
 # (head_ref is only set for PR events, otherwise fallback to run_id which differs for every run).
