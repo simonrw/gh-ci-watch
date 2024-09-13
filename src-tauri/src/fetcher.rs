@@ -87,6 +87,12 @@ impl Fetcher {
             .await
             .wrap_err("fetching run jobs")?;
 
+        let ProgressResult {
+            progress,
+            complete,
+            total,
+        } = calculate_progress(&jobs);
+
         tracing::debug!("updating PR state");
         let pr_result = match run.status.as_str() {
             "completed" => match run.conclusion.as_deref() {
@@ -95,6 +101,8 @@ impl Fetcher {
                         status: Status::Failed,
                         title: pr_info.title,
                         description: pr_info.description,
+                        num_steps: total,
+                        num_complete_steps: complete,
                     }
                     // tracing::debug!(before = ?pr.status, after = ?Status::Failed, "updating status");
                     // pr.status = Status::Failed;
@@ -103,6 +111,8 @@ impl Fetcher {
                     status: Status::Succeeded,
                     title: pr_info.title,
                     description: pr_info.description,
+                    num_steps: total,
+                    num_complete_steps: complete,
                 },
                 other => {
                     todo!("unhandled combination of status: completed and conclusion: {other:?}")
@@ -112,6 +122,8 @@ impl Fetcher {
                 status: Status::Queued,
                 title: pr_info.title,
                 description: pr_info.description,
+                num_steps: total,
+                num_complete_steps: complete,
             },
             "in_progress" => {
                 // get run jobs
@@ -125,12 +137,16 @@ impl Fetcher {
                     status,
                     title: pr_info.title,
                     description: pr_info.description,
+                    num_steps: total,
+                    num_complete_steps: complete,
                 }
             }
             "pending" => Pr {
                 status: Status::Queued,
                 title: pr_info.title,
                 description: pr_info.description,
+                num_steps: total,
+                num_complete_steps: complete,
             },
             other => todo!("unhandled status: {other}"),
         };
@@ -192,6 +208,8 @@ pub struct Pr {
     pub status: Status,
     pub title: String,
     pub description: String,
+    pub num_steps: usize,
+    pub num_complete_steps: usize,
 }
 
 #[cfg(test)]

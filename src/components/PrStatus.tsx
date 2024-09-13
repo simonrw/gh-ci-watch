@@ -24,6 +24,8 @@ type PrStatusResponse = {
   status: RawStatus;
   title: string;
   description: string;
+  numSteps: number;
+  numCompleteSteps: number;
 };
 
 type PrStatusProps = {
@@ -42,6 +44,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
   } = useQuery<StatusPayload>({
     queryKey: ["pr", pr.number],
     queryFn: async () => {
+<<<<<<< HEAD
       const { status, title, description } = await invoke<PrStatusResponse>(
         "fetch_status",
         {
@@ -52,6 +55,21 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
         }
       );
       return { status: statusFromRaw(status), title, description };
+||||||| parent of 296235a6fb58 (WIP)
+      const { status, title, description } = await invoke<PrStatusResponse>("fetch_status", {
+        owner: pr.owner,
+        repo: pr.repo,
+        prNumber: pr.number,
+      });
+      return { status: statusFromRaw(status), title, description };
+=======
+      const { status, title, description, numSteps, numCompleteSteps } = await invoke<PrStatusResponse>("fetch_status", {
+        owner: pr.owner,
+        repo: pr.repo,
+        prNumber: pr.number,
+      });
+      return { status: statusFromRaw(status), title, description, numSteps, numCompleteSteps };
+>>>>>>> 296235a6fb58 (WIP)
     },
     refetchInterval: 10000,
   });
