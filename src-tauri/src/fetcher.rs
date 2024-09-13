@@ -72,6 +72,20 @@ impl Fetcher {
         // if let Err(e) = serde_json::to_writer_pretty(&mut f, &jobs) {
         //     tracing::warn!(error = ?e, "error saving in-progress job JSON state");
         // }
+        // get run jobs
+        tracing::debug!("fetching jobs for run");
+        let GetRunJobsResponse { jobs } = self
+            .client
+            .get(
+                format!(
+                    "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
+                    owner, repo, run.id
+                ),
+                token,
+                None::<()>,
+            )
+            .await
+            .wrap_err("fetching run jobs")?;
 
         tracing::debug!("updating PR state");
         let pr_result = match run.status.as_str() {
@@ -101,21 +115,11 @@ impl Fetcher {
             },
             "in_progress" => {
                 // get run jobs
-                tracing::debug!("fetching jobs for run");
-                let GetRunJobsResponse { jobs } = self
-                    .client
-                    .get(
-                        format!(
-                            "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
-                            owner, repo, run.id
-                        ),
-                        token,
-                        None::<()>,
-                    )
-                    .await
-                    .wrap_err("fetching run jobs")?;
-
-                let progress = calculate_progress(&jobs).unwrap_or(0.0);
+                let ProgressResult {
+                    progress,
+                    complete: _,
+                    total: _,
+                } = calculate_progress(&jobs);
                 let status = Status::InProgress(progress);
                 Pr {
                     status,
@@ -137,28 +141,41 @@ impl Fetcher {
     }
 }
 
-fn calculate_progress(jobs: &[RunJob]) -> eyre::Result<f32> {
+#[derive(Debug)]
+struct ProgressResult {
+    progress: f32,
+    complete: usize,
+    total: usize,
+}
+
+fn calculate_progress(jobs: &[RunJob]) -> ProgressResult {
     let mut n_steps_total = 0;
-    let mut completed_steps = 0.0f32;
+    let mut completed_steps = 0;
     for job in jobs {
         let n_steps = job.steps.len();
 
         if job.status == "completed" {
             n_steps_total += n_steps;
-            completed_steps += n_steps as f32;
+            completed_steps += n_steps;
             continue;
         }
 
         for step in &job.steps {
             n_steps_total += 1;
             if step.status == "completed" {
-                completed_steps += 1.0;
+                completed_steps += 1;
             }
         }
     }
-    // TODO: fallable cast
     tracing::trace!(%completed_steps, %n_steps_total, "calculated progress percentage");
-    Ok(completed_steps / (n_steps_total as f32))
+
+    // TODO: fallable cast
+
+    ProgressResult {
+        progress: (completed_steps as f32) / (n_steps_total as f32),
+        complete: completed_steps,
+        total: n_steps_total,
+    }
 }
 
 #[derive(Debug, Serialize, Clone, Copy)]
@@ -181,13 +198,16 @@ pub struct Pr {
 mod tests {
     use approx::assert_abs_diff_eq;
 
-    use crate::{fetcher::calculate_progress, github::GetRunJobsResponse};
+    use crate::{
+        fetcher::{calculate_progress, ProgressResult},
+        github::GetRunJobsResponse,
+    };
 
     #[test]
     fn from_example() {
         let s = std::fs::read_to_string("testdata/in-progress-jobs.json").unwrap();
         let GetRunJobsResponse { jobs } = serde_json::from_str(&s).unwrap();
-        let progress = calculate_progress(&jobs).unwrap();
+        let ProgressResult { progress, .. } = calculate_progress(&jobs);
         assert_abs_diff_eq!(progress, 0.6875, epsilon = 0.001);
     }
 }
