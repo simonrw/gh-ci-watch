@@ -24,6 +24,8 @@ pub struct Head {
 pub struct GetPullRequestResponse {
     pub title: String,
     pub head: Head,
+    #[serde(rename = "body")]
+    pub description: String,
 }
 
 #[derive(Debug, Deserialize)]
