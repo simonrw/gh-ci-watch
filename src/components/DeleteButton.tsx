@@ -6,9 +6,10 @@ import {
   AlertDialogDescription,
   AlertDialogCancel,
   AlertDialogAction,
-} from "@radix-ui/react-alert-dialog";
+  AlertDialogHeader,
+  AlertDialogFooter,
+} from "./ui/alert-dialog";
 import { Trash } from "lucide-react";
-import { AlertDialogHeader, AlertDialogFooter } from "./ui/alert-dialog";
 import { Button } from "./ui/button";
 
 type DeleteButtonProps = {
