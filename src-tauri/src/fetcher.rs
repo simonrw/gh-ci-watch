@@ -15,16 +15,18 @@ pub struct Fetcher {
 
 impl Fetcher {
     pub fn new() -> Self {
-        let client = GitHubClient::from_env().unwrap();
+        let client = GitHubClient::new();
         Self { client }
     }
 
     pub async fn fetch(
         &self,
+        token: impl AsRef<str>,
         owner: impl AsRef<str>,
         repo: impl AsRef<str>,
         pr_number: u64,
     ) -> eyre::Result<Pr> {
+        let token = token.as_ref();
         let owner = owner.as_ref();
         let repo = repo.as_ref();
         tracing::debug!("fetching pr info");
@@ -35,6 +37,7 @@ impl Fetcher {
                     "https://api.github.com/repos/{}/{}/pulls/{}",
                     owner, repo, pr_number,
                 ),
+                token,
                 None::<()>,
             )
             .await
@@ -49,6 +52,7 @@ impl Fetcher {
                     "https://api.github.com/repos/{}/{}/actions/workflows/{}/runs",
                     owner, repo, EXT_TESTS_NUMBER
                 ),
+                token,
                 Some(GetWorkflowRunsQueryArgs {
                     branch: pr_info.head.branch.clone(),
                 }),
@@ -105,6 +109,7 @@ impl Fetcher {
                             "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
                             owner, repo, run.id
                         ),
+                        token,
                         None::<()>,
                     )
                     .await

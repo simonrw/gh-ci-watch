@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Pr, RawStatus, Status, statusFromRaw, StatusPayload } from "../types";
 import { invoke } from "@tauri-apps/api/tauri";
-import Markdown from 'react-markdown';
+import Markdown from "react-markdown";
 import {
   Card,
   CardContent,
@@ -11,9 +11,14 @@ import {
 } from "./ui/card";
 import { ProgressReport } from "./ProgressReport";
 import { DeleteButton } from "./DeleteButton";
-import { useState } from "react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
+import { useContext, useState } from "react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "./ui/collapsible";
 import { ChevronsUpDown } from "lucide-react";
+import { StorageContext } from "@/lib/storage";
 
 type PrStatusResponse = {
   status: RawStatus;
@@ -28,6 +33,7 @@ type PrStatusProps = {
 
 export function PrStatus({ pr, removePr }: PrStatusProps) {
   const [prevStatus, setPrevStatus] = useState<Status | null>(null);
+  const storage = useContext(StorageContext);
 
   const {
     data: status,
@@ -36,11 +42,15 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
   } = useQuery<StatusPayload>({
     queryKey: ["pr", pr.number],
     queryFn: async () => {
-      const { status, title, description } = await invoke<PrStatusResponse>("fetch_status", {
-        owner: pr.owner,
-        repo: pr.repo,
-        prNumber: pr.number,
-      });
+      const { status, title, description } = await invoke<PrStatusResponse>(
+        "fetch_status",
+        {
+          owner: pr.owner,
+          repo: pr.repo,
+          prNumber: pr.number,
+          token: storage.getToken(),
+        }
+      );
       return { status: statusFromRaw(status), title, description };
     },
     refetchInterval: 10000,
@@ -108,7 +118,9 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
         <CardDescription>
           <Collapsible>
             <CollapsibleTrigger className="flex items-center gap-2">
-              <p>{pr.owner}/{pr.repo} (#{pr.number})</p>
+              <p>
+                {pr.owner}/{pr.repo} (#{pr.number})
+              </p>
               <ChevronsUpDown />
             </CollapsibleTrigger>
             <CollapsibleContent>
