@@ -10,15 +10,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { StorageContext } from "@/lib/storage";
-import { RequestToken } from "@/components/RequestToken";
+import { Navigate } from "react-router-dom";
 
 export default function Index() {
   const storage = useContext(StorageContext);
 
-  console.log({ state: storage.state });
-
   if (!storage.state.token) {
-    return <RequestToken />;
+    return <Navigate replace to="/auth" />;
   }
 
   const [prs, setPrs] = useState<Pr[]>(storage.state.prs);

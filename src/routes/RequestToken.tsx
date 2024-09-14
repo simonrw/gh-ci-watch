@@ -10,9 +10,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "./ui/form";
-import { Input } from "./ui/input";
-import { Button } from "./ui/button";
+} from "../components/ui/form";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 const formSchema = z.object({
   token: z.string().min(1),
@@ -26,11 +27,14 @@ export function RequestToken() {
     },
   });
 
+  const naviagte = useNavigate();
+
   const storage = useContext(StorageContext);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     console.log({ token: values.token });
     storage.setToken(values.token);
+    naviagte("/");
   }
 
   return (

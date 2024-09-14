@@ -15,7 +15,7 @@ pub struct Fetcher {
 
 impl Fetcher {
     pub fn new() -> Self {
-        let client = GitHubClient::from_env().unwrap();
+        let client = GitHubClient::new();
         Self { client }
     }
 
