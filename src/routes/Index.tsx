@@ -10,12 +10,18 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { StorageContext } from "@/lib/storage";
+import { RequestToken } from "@/components/RequestToken";
 
 export default function Index() {
-
   const storage = useContext(StorageContext);
 
-  const [prs, setPrs] = useState<Pr[]>(storage.prs);
+  console.log({ state: storage.state });
+
+  if (!storage.state.token) {
+    return <RequestToken />;
+  }
+
+  const [prs, setPrs] = useState<Pr[]>(storage.state.prs);
 
   const addPr = (pr: Pr) => {
     setPrs((prs) => [...prs, pr]);

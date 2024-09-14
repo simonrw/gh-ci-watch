@@ -16,12 +16,13 @@ async fn fetch_status(
     owner: String,
     repo: String,
     pr_number: u64,
+    token: String,
     state: State<'_, AppState>,
 ) -> Result<Pr, String> {
     tracing::debug!(%owner, %repo, %pr_number, "requesting status");
     let fetcher = &state.fetcher;
     let pr = fetcher
-        .fetch(owner, repo, pr_number)
+        .fetch(token, owner, repo, pr_number)
         .await
         .map_err(|e| format!("Error fetching pr status: {e}"))?;
     Ok(pr)

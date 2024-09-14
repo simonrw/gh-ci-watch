@@ -99,13 +99,18 @@ impl GitHubClient {
         Ok(Self { client, token })
     }
 
-    pub async fn get<T, Q>(&self, url: impl IntoUrl, query: Option<Q>) -> eyre::Result<T>
+    pub async fn get<T, Q>(
+        &self,
+        url: impl IntoUrl,
+        token: &str,
+        query: Option<Q>,
+    ) -> eyre::Result<T>
     where
         T: for<'de> serde::Deserialize<'de>,
         Q: Serialize,
     {
         let url = url.into_url().wrap_err("invalid URL")?;
-        let mut builder = self.client.get(url).bearer_auth(&self.token);
+        let mut builder = self.client.get(url).bearer_auth(token);
         if let Some(query) = &query {
             builder = builder.query(query);
         }
