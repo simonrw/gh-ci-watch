@@ -95,11 +95,6 @@ impl Fetcher {
             },
             "in_progress" => {
                 // get run jobs
-                let ProgressResult {
-                    progress,
-                    complete: _,
-                    total: _,
-                } = calculate_progress(&jobs);
                 let status = Status::InProgress(progress);
                 Pr {
                     status,
