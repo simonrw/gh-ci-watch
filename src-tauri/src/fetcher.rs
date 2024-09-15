@@ -29,36 +29,12 @@ impl Fetcher {
         let token = token.as_ref();
         let owner = owner.as_ref();
         let repo = repo.as_ref();
-        tracing::debug!("fetching pr info");
-        let pr_info: GetPullRequestResponse = self
-            .client
-            .get(
-                format!(
-                    "https://api.github.com/repos/{}/{}/pulls/{}",
-                    owner, repo, pr_number,
-                ),
-                token,
-                None::<()>,
-            )
-            .await
-            .wrap_err("fetching branch info")?;
+        let pr_info = self.fetch_pr_info(owner, repo, pr_number, token).await?;
 
         // fetch workflow runs for branch
-        tracing::debug!("fetching workflow runs");
         let GetWorkflowRunsResponse { mut workflow_runs } = self
-            .client
-            .get(
-                format!(
-                    "https://api.github.com/repos/{}/{}/actions/workflows/{}/runs",
-                    owner, repo, EXT_TESTS_NUMBER
-                ),
-                token,
-                Some(GetWorkflowRunsQueryArgs {
-                    branch: pr_info.head.branch.clone(),
-                }),
-            )
-            .await
-            .wrap_err("fetching workflow runs")?;
+            .fetch_workflow_runs(owner, repo, pr_info.head.branch, token)
+            .await?;
         workflow_runs.sort_by_key(|k| k.run_number);
         let Some(run) = workflow_runs.pop() else {
             // TODO
@@ -75,15 +51,7 @@ impl Fetcher {
         // get run jobs
         tracing::debug!("fetching jobs for run");
         let GetRunJobsResponse { jobs } = self
-            .client
-            .get(
-                format!(
-                    "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
-                    owner, repo, run.id
-                ),
-                token,
-                None::<()>,
-            )
+            .fetch_run_jobs(owner, repo, run.id, token)
             .await
             .wrap_err("fetching run jobs")?;
 
@@ -154,6 +122,68 @@ impl Fetcher {
         tracing::debug!(pr = %pr_number, status = ?pr_result, "PR result");
 
         Ok(pr_result)
+    }
+
+    async fn fetch_pr_info(
+        &self,
+        owner: &str,
+        repo: &str,
+        pr_number: u64,
+        token: &str,
+    ) -> eyre::Result<GetPullRequestResponse> {
+        tracing::debug!("fetching pr info");
+        self.client
+            .get(
+                format!(
+                    "https://api.github.com/repos/{}/{}/pulls/{}",
+                    owner, repo, pr_number,
+                ),
+                token,
+                None::<()>,
+            )
+            .await
+            .wrap_err("fetching branch info")
+    }
+
+    async fn fetch_workflow_runs(
+        &self,
+        owner: &str,
+        repo: &str,
+        branch_name: impl Into<String>,
+        token: &str,
+    ) -> eyre::Result<GetWorkflowRunsResponse> {
+        tracing::debug!("fetching workflow runs");
+        self.client
+            .get(
+                format!(
+                    "https://api.github.com/repos/{}/{}/actions/workflows/{}/runs",
+                    owner, repo, EXT_TESTS_NUMBER
+                ),
+                token,
+                Some(GetWorkflowRunsQueryArgs {
+                    branch: branch_name.into(),
+                }),
+            )
+            .await
+    }
+
+    async fn fetch_run_jobs(
+        &self,
+        owner: &str,
+        repo: &str,
+        run_id: u64,
+        token: &str,
+    ) -> eyre::Result<GetRunJobsResponse> {
+        self.client
+            .get(
+                format!(
+                    "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
+                    owner, repo, run_id,
+                ),
+                token,
+                None::<()>,
+            )
+            .await
     }
 }
 
