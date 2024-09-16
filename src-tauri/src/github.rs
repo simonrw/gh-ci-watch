@@ -28,6 +28,18 @@ pub struct GetPullRequestResponse {
     pub description: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowDetails {
+    pub id: u64,
+    pub name: String,
+    pub filename: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetWorkflowsResponse {
+    pub workflows: Vec<WorkflowDetails>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct WorkflowRun {
     pub id: u64,
@@ -81,11 +93,13 @@ pub struct GetRunJobsResponse {
 #[derive(Clone)]
 pub struct GitHubClient {
     client: Client,
+    // TODO: borrow
+    base_url: String,
 }
 
 // Constructors
 impl GitHubClient {
-    pub fn new() -> Self {
+    pub fn new(base_url: impl Into<String>) -> Self {
         let mut headers = HeaderMap::new();
         headers.append(USER_AGENT, HeaderValue::from_static("gh-ci-watch"));
 
@@ -93,12 +107,15 @@ impl GitHubClient {
             .default_headers(headers)
             .build()
             .expect("programming error");
-        Self { client }
+        Self {
+            client,
+            base_url: base_url.into(),
+        }
     }
 
     pub async fn get<T, Q>(
         &self,
-        url: impl IntoUrl,
+        path: impl Into<String>,
         token: &str,
         query: Option<Q>,
     ) -> eyre::Result<T>
@@ -106,7 +123,8 @@ impl GitHubClient {
         T: for<'de> serde::Deserialize<'de>,
         Q: Serialize,
     {
-        let url = url.into_url().wrap_err("invalid URL")?;
+        let path = path.into();
+        let url = format!("{}{}", &self.base_url, &path);
         let mut builder = self.client.get(url).bearer_auth(token);
         if let Some(query) = &query {
             builder = builder.query(query);

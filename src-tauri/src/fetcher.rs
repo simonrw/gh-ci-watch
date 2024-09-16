@@ -1,6 +1,6 @@
 use crate::github::{
     GetPullRequestResponse, GetRunJobsResponse, GetWorkflowRunsQueryArgs, GetWorkflowRunsResponse,
-    GitHubClient, RunJob,
+    GetWorkflowsResponse, GitHubClient, RunJob, WorkflowDetails,
 };
 use color_eyre::eyre::{self, Context};
 use serde::Serialize;
@@ -14,8 +14,8 @@ pub struct Fetcher {
 }
 
 impl Fetcher {
-    pub fn new() -> Self {
-        let client = GitHubClient::new();
+    pub fn new(base_url: impl Into<String>) -> Self {
+        let client = GitHubClient::new(base_url);
         Self { client }
     }
 
@@ -119,6 +119,29 @@ impl Fetcher {
         Ok(pr_result)
     }
 
+    pub async fn fetch_workflows(
+        &self,
+        token: impl AsRef<str>,
+        owner: impl AsRef<str>,
+        repo: impl AsRef<str>,
+    ) -> eyre::Result<Vec<WorkflowDetails>> {
+        let token = token.as_ref();
+        let owner = owner.as_ref();
+        let repo = repo.as_ref();
+        tracing::debug!(%owner, %repo, "fetching workflows");
+
+        let GetWorkflowsResponse { workflows } = self
+            .client
+            .get(
+                format!("/repos/{}/{}/actions/workflows", owner, repo),
+                token,
+                None::<()>,
+            )
+            .await
+            .wrap_err("making http request")?;
+        Ok(workflows)
+    }
+
     async fn fetch_pr_info(
         &self,
         owner: &str,
@@ -129,10 +152,7 @@ impl Fetcher {
         tracing::debug!("fetching pr info");
         self.client
             .get(
-                format!(
-                    "https://api.github.com/repos/{}/{}/pulls/{}",
-                    owner, repo, pr_number,
-                ),
+                format!("/repos/{}/{}/pulls/{}", owner, repo, pr_number,),
                 token,
                 None::<()>,
             )
@@ -151,7 +171,7 @@ impl Fetcher {
         self.client
             .get(
                 format!(
-                    "https://api.github.com/repos/{}/{}/actions/workflows/{}/runs",
+                    "/repos/{}/{}/actions/workflows/{}/runs",
                     owner, repo, EXT_TESTS_NUMBER
                 ),
                 token,
@@ -171,10 +191,7 @@ impl Fetcher {
     ) -> eyre::Result<GetRunJobsResponse> {
         self.client
             .get(
-                format!(
-                    "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
-                    owner, repo, run_id,
-                ),
+                format!("/repos/{}/{}/actions/runs/{}/jobs", owner, repo, run_id,),
                 token,
                 None::<()>,
             )
