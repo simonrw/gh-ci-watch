@@ -59,4 +59,6 @@ export type StatusPayload = {
   status: Status;
   title: string;
   description: string;
+  numSteps: number;
+  numCompleteSteps: number;
 };

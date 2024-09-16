@@ -32,7 +32,6 @@ export function RequestToken() {
   const storage = useContext(StorageContext);
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log({ token: values.token });
     storage.setToken(values.token);
     naviagte("/");
   }

@@ -29,36 +29,12 @@ impl Fetcher {
         let token = token.as_ref();
         let owner = owner.as_ref();
         let repo = repo.as_ref();
-        tracing::debug!("fetching pr info");
-        let pr_info: GetPullRequestResponse = self
-            .client
-            .get(
-                format!(
-                    "https://api.github.com/repos/{}/{}/pulls/{}",
-                    owner, repo, pr_number,
-                ),
-                token,
-                None::<()>,
-            )
-            .await
-            .wrap_err("fetching branch info")?;
+        let pr_info = self.fetch_pr_info(owner, repo, pr_number, token).await?;
 
         // fetch workflow runs for branch
-        tracing::debug!("fetching workflow runs");
         let GetWorkflowRunsResponse { mut workflow_runs } = self
-            .client
-            .get(
-                format!(
-                    "https://api.github.com/repos/{}/{}/actions/workflows/{}/runs",
-                    owner, repo, EXT_TESTS_NUMBER
-                ),
-                token,
-                Some(GetWorkflowRunsQueryArgs {
-                    branch: pr_info.head.branch.clone(),
-                }),
-            )
-            .await
-            .wrap_err("fetching workflow runs")?;
+            .fetch_workflow_runs(owner, repo, pr_info.head.branch, token)
+            .await?;
         workflow_runs.sort_by_key(|k| k.run_number);
         let Some(run) = workflow_runs.pop() else {
             // TODO
@@ -72,6 +48,18 @@ impl Fetcher {
         // if let Err(e) = serde_json::to_writer_pretty(&mut f, &jobs) {
         //     tracing::warn!(error = ?e, "error saving in-progress job JSON state");
         // }
+        // get run jobs
+        tracing::debug!("fetching jobs for run");
+        let GetRunJobsResponse { jobs } = self
+            .fetch_run_jobs(owner, repo, run.id, token)
+            .await
+            .wrap_err("fetching run jobs")?;
+
+        let ProgressResult {
+            progress,
+            complete,
+            total,
+        } = calculate_progress(&jobs);
 
         tracing::debug!("updating PR state");
         let pr_result = match run.status.as_str() {
@@ -81,6 +69,8 @@ impl Fetcher {
                         status: Status::Failed,
                         title: pr_info.title,
                         description: pr_info.description,
+                        num_steps: total,
+                        num_complete_steps: complete,
                     }
                     // tracing::debug!(before = ?pr.status, after = ?Status::Failed, "updating status");
                     // pr.status = Status::Failed;
@@ -89,6 +79,8 @@ impl Fetcher {
                     status: Status::Succeeded,
                     title: pr_info.title,
                     description: pr_info.description,
+                    num_steps: total,
+                    num_complete_steps: complete,
                 },
                 other => {
                     todo!("unhandled combination of status: completed and conclusion: {other:?}")
@@ -98,35 +90,26 @@ impl Fetcher {
                 status: Status::Queued,
                 title: pr_info.title,
                 description: pr_info.description,
+                num_steps: total,
+                num_complete_steps: complete,
             },
             "in_progress" => {
                 // get run jobs
-                tracing::debug!("fetching jobs for run");
-                let GetRunJobsResponse { jobs } = self
-                    .client
-                    .get(
-                        format!(
-                            "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
-                            owner, repo, run.id
-                        ),
-                        token,
-                        None::<()>,
-                    )
-                    .await
-                    .wrap_err("fetching run jobs")?;
-
-                let progress = calculate_progress(&jobs).unwrap_or(0.0);
                 let status = Status::InProgress(progress);
                 Pr {
                     status,
                     title: pr_info.title,
                     description: pr_info.description,
+                    num_steps: total,
+                    num_complete_steps: complete,
                 }
             }
             "pending" => Pr {
                 status: Status::Queued,
                 title: pr_info.title,
                 description: pr_info.description,
+                num_steps: total,
+                num_complete_steps: complete,
             },
             other => todo!("unhandled status: {other}"),
         };
@@ -135,30 +118,105 @@ impl Fetcher {
 
         Ok(pr_result)
     }
+
+    async fn fetch_pr_info(
+        &self,
+        owner: &str,
+        repo: &str,
+        pr_number: u64,
+        token: &str,
+    ) -> eyre::Result<GetPullRequestResponse> {
+        tracing::debug!("fetching pr info");
+        self.client
+            .get(
+                format!(
+                    "https://api.github.com/repos/{}/{}/pulls/{}",
+                    owner, repo, pr_number,
+                ),
+                token,
+                None::<()>,
+            )
+            .await
+            .wrap_err("fetching branch info")
+    }
+
+    async fn fetch_workflow_runs(
+        &self,
+        owner: &str,
+        repo: &str,
+        branch_name: impl Into<String>,
+        token: &str,
+    ) -> eyre::Result<GetWorkflowRunsResponse> {
+        tracing::debug!("fetching workflow runs");
+        self.client
+            .get(
+                format!(
+                    "https://api.github.com/repos/{}/{}/actions/workflows/{}/runs",
+                    owner, repo, EXT_TESTS_NUMBER
+                ),
+                token,
+                Some(GetWorkflowRunsQueryArgs {
+                    branch: branch_name.into(),
+                }),
+            )
+            .await
+    }
+
+    async fn fetch_run_jobs(
+        &self,
+        owner: &str,
+        repo: &str,
+        run_id: u64,
+        token: &str,
+    ) -> eyre::Result<GetRunJobsResponse> {
+        self.client
+            .get(
+                format!(
+                    "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
+                    owner, repo, run_id,
+                ),
+                token,
+                None::<()>,
+            )
+            .await
+    }
 }
 
-fn calculate_progress(jobs: &[RunJob]) -> eyre::Result<f32> {
-    let mut n_steps_total = 0;
-    let mut completed_steps = 0.0f32;
+#[derive(Debug)]
+struct ProgressResult {
+    progress: f32,
+    complete: u64,
+    total: u64,
+}
+
+fn calculate_progress(jobs: &[RunJob]) -> ProgressResult {
+    let mut n_steps_total = 0u64;
+    let mut completed_steps = 0u64;
     for job in jobs {
-        let n_steps = job.steps.len();
+        let n_steps = u64::try_from(job.steps.len()).unwrap();
 
         if job.status == "completed" {
             n_steps_total += n_steps;
-            completed_steps += n_steps as f32;
+            completed_steps += n_steps;
             continue;
         }
 
         for step in &job.steps {
             n_steps_total += 1;
             if step.status == "completed" {
-                completed_steps += 1.0;
+                completed_steps += 1;
             }
         }
     }
-    // TODO: fallable cast
     tracing::trace!(%completed_steps, %n_steps_total, "calculated progress percentage");
-    Ok(completed_steps / (n_steps_total as f32))
+
+    // TODO: fallable cast
+
+    ProgressResult {
+        progress: (completed_steps as f32) / (n_steps_total as f32),
+        complete: completed_steps,
+        total: n_steps_total,
+    }
 }
 
 #[derive(Debug, Serialize, Clone, Copy)]
@@ -175,19 +233,24 @@ pub struct Pr {
     pub status: Status,
     pub title: String,
     pub description: String,
+    pub num_steps: u64,
+    pub num_complete_steps: u64,
 }
 
 #[cfg(test)]
 mod tests {
     use approx::assert_abs_diff_eq;
 
-    use crate::{fetcher::calculate_progress, github::GetRunJobsResponse};
+    use crate::{
+        fetcher::{calculate_progress, ProgressResult},
+        github::GetRunJobsResponse,
+    };
 
     #[test]
     fn from_example() {
         let s = std::fs::read_to_string("testdata/in-progress-jobs.json").unwrap();
         let GetRunJobsResponse { jobs } = serde_json::from_str(&s).unwrap();
-        let progress = calculate_progress(&jobs).unwrap();
+        let ProgressResult { progress, .. } = calculate_progress(&jobs);
         assert_abs_diff_eq!(progress, 0.6875, epsilon = 0.001);
     }
 }

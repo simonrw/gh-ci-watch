@@ -24,6 +24,8 @@ type PrStatusResponse = {
   status: RawStatus;
   title: string;
   description: string;
+  num_steps: number;
+  num_complete_steps: number;
 };
 
 type PrStatusProps = {
@@ -35,28 +37,28 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
   const [prevStatus, setPrevStatus] = useState<Status | null>(null);
   const storage = useContext(StorageContext);
 
-  const {
-    data: status,
-    isLoading,
-    error,
-  } = useQuery<StatusPayload>({
+  const { data, isLoading, error } = useQuery<StatusPayload>({
     queryKey: ["pr", pr.number],
     queryFn: async () => {
-      const { status, title, description } = await invoke<PrStatusResponse>(
-        "fetch_status",
-        {
+      const { status, title, description, num_steps, num_complete_steps } =
+        await invoke<PrStatusResponse>("fetch_status", {
           owner: pr.owner,
           repo: pr.repo,
           prNumber: pr.number,
           token: storage.getToken(),
-        }
-      );
-      return { status: statusFromRaw(status), title, description };
+        });
+      return {
+        status: statusFromRaw(status),
+        title,
+        description,
+        numSteps: num_steps,
+        numCompleteSteps: num_complete_steps,
+      };
     },
     refetchInterval: 10000,
   });
 
-  if (isLoading)
+  if (isLoading || !data)
     return (
       <div>
         <p>
@@ -72,16 +74,14 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
       </div>
     );
 
-  console.log({ status });
+  if (data.status !== prevStatus) {
+    setPrevStatus(data.status);
 
-  if (status!.status !== prevStatus) {
-    setPrevStatus(status!.status);
-
-    if (status!.status.kind === "succeeded") {
+    if (data.status.kind === "succeeded") {
       new Notification("PR action succeeded!", {
         body: "The PR completed successfully",
       });
-    } else if (status!.status.kind === "failed") {
+    } else if (data.status.kind === "failed") {
       new Notification("PR action failed", {
         body: "The PR completed did not succeed",
       });
@@ -89,7 +89,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
   }
 
   let borderColor = "";
-  switch (status!.status.kind) {
+  switch (data.status.kind) {
     case "succeeded":
       borderColor = "border border-green-500";
       break;
@@ -110,7 +110,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
         <CardTitle>
           <div className="flex justify-between">
             <div>
-              <p>{status!.title}</p>
+              <p>{data.title}</p>
             </div>
             <DeleteButton pr={pr.number} removePr={removePr} />
           </div>
@@ -124,13 +124,17 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
               <ChevronsUpDown />
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <Markdown skipHtml>{status!.description}</Markdown>
+              <Markdown skipHtml>{data.description}</Markdown>
             </CollapsibleContent>
           </Collapsible>
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ProgressReport status={status!.status} />
+        <ProgressReport
+          status={data.status}
+          numCompleteSteps={data.numCompleteSteps}
+          numSteps={data.numSteps}
+        />
       </CardContent>
     </Card>
   );
