@@ -48,6 +48,10 @@ export class Storage {
     }
     return new Storage(state);
   }
+
+  public reset(): void {
+    localStorage.removeItem(STORAGE_KEY);
+  }
 }
 
 export const StorageContext = createContext(Storage.load());

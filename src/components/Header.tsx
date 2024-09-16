@@ -3,6 +3,7 @@ import { InputForm } from "./InputForm";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { ModeToggle } from "./ui/ThemeModeToggle";
+import { LogoutButton } from "./LogoutButton";
 
 type HeaderProps = {
   addPr: (pr: Pr) => void;
@@ -14,7 +15,7 @@ export function Header({ addPr }: HeaderProps) {
       <h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl">
         Actions
       </h1>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
         <Popover>
           <PopoverTrigger asChild>
             <Button>Add PR</Button>
@@ -24,6 +25,7 @@ export function Header({ addPr }: HeaderProps) {
           </PopoverContent>
         </Popover>
         <ModeToggle />
+        <LogoutButton />
       </div>
     </div>
   );
