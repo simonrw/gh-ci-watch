@@ -11,7 +11,7 @@ import {
 } from "./ui/card";
 import { ProgressReport } from "./ProgressReport";
 import { DeleteButton } from "./DeleteButton";
-import { useContext, useState } from "react";
+import { ReactNode, useContext, useState } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -34,6 +34,7 @@ type PrStatusProps = {
 };
 
 export function PrStatus({ pr, removePr }: PrStatusProps) {
+  console.log({ pr });
   const [prevStatus, setPrevStatus] = useState<Status | null>(null);
   const storage = useContext(StorageContext);
 
@@ -57,22 +58,42 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
     },
     refetchInterval: 10000,
   });
-
-  if (isLoading || !data)
-    return (
-      <div>
-        <p>
-          {pr.owner}/{pr.repo} #{pr.number} ??
-        </p>
-      </div>
-    );
+  console.log({ isLoading, data, error });
 
   if (error)
     return (
-      <div>
-        <p>Error: {error.toString()}</p>
-      </div>
+      <Card className="border border-red-300">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex justify-between">
+              <div>
+                <p>Error</p>
+              </div>
+              <DeleteButton pr={pr.number} removePr={removePr} />
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>{error.toString()}</CardContent>
+      </Card>
     );
+
+  if (isLoading || !data) {
+    return (
+      <Card className="border border-yellow-600 animate-pulse">
+        <CardHeader>
+          <CardTitle>
+            <div className="flex justify-between">
+              <div>
+                <p>Loading...</p>
+              </div>
+              <DeleteButton pr={pr.number} removePr={removePr} />
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent></CardContent>
+      </Card>
+    );
+  }
 
   if (data.status !== prevStatus) {
     setPrevStatus(data.status);
