@@ -12,6 +12,17 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Pr } from "@/types";
+import { useQuery } from "@tanstack/react-query";
+import { invoke } from "@tauri-apps/api/tauri";
+import { useContext } from "react";
+import { StorageContext } from "@/lib/storage";
+import {
+  Select,
+  SelectItem,
+  SelectContent,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 const formSchema = z.object({
   owner: z.string().min(1).max(50, {
@@ -20,6 +31,7 @@ const formSchema = z.object({
   repo: z.string().min(1).max(50, {
     message: "Repo must be less than 50 characters",
   }),
+  workflow: z.string(),
   pr: z.coerce.number().min(0),
 });
 
@@ -27,14 +39,45 @@ type InputFormProps = {
   addPr: (pr: Pr) => void;
 };
 
+type Workflow = {
+  id: number;
+  name: string;
+  filename: string;
+};
+
 export function InputForm(props: InputFormProps) {
+  const storage = useContext(StorageContext);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       owner: "",
       repo: "",
+      workflow: "",
       pr: 0,
     },
+  });
+
+  const w = form.watch();
+  const { data: workflows } = useQuery<Workflow[]>({
+    queryKey: ["workflows", w.owner, w.repo],
+    queryFn: async ({ signal }) => {
+      // sleep
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      if (!signal?.aborted) {
+        const workflows: Workflow[] = await invoke("fetch_workflows_for_repo", {
+          owner: w.owner,
+          repo: w.repo,
+          token: storage.getToken(),
+        });
+
+        return workflows;
+      }
+
+      return [];
+    },
+    enabled: w.owner !== "" && w.repo !== "",
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
@@ -85,6 +128,36 @@ export function InputForm(props: InputFormProps) {
               <FormControl>
                 <Input type="number" placeholder="PR #" {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="workflow"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Workflow</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+                disabled={!workflows?.length}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a workflow" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {(workflows || []).map((workflow) => {
+                    return (
+                      <SelectItem value={workflow.id.toString()}>
+                        {workflow.name}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}

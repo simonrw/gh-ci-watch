@@ -130,7 +130,7 @@ impl Fetcher {
         let repo = repo.as_ref();
         tracing::debug!(%owner, %repo, "fetching workflows");
 
-        let GetWorkflowsResponse { workflows } = self
+        match self
             .client
             .get(
                 format!("/repos/{}/{}/actions/workflows", owner, repo),
@@ -138,8 +138,16 @@ impl Fetcher {
                 None::<()>,
             )
             .await
-            .wrap_err("making http request")?;
-        Ok(workflows)
+        {
+            Ok(GetWorkflowsResponse { workflows }) => {
+                tracing::debug!(?workflows, "got workflows for repo");
+                Ok(workflows)
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "error fetching workflows");
+                eyre::bail!("error fetching workflows");
+            }
+        }
     }
 
     async fn fetch_pr_info(

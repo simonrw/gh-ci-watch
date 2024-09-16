@@ -48,7 +48,10 @@ async fn fetch_workflows_for_repo(
     let workflows = fetcher
         .fetch_workflows(token, &owner, &repo)
         .await
-        .map_err(|e| format!("Error fetching workflows for '{owner}/{repo}': {e}"))?;
+        .map_err(|e| {
+            tracing::warn!(error = %e, %owner, %repo, "error fetching workflows");
+            format!("Error fetching workflows for '{owner}/{repo}': {e}")
+        })?;
     tracing::debug!(?workflows, "got workflows");
     Ok(workflows)
 }
