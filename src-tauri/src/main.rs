@@ -5,7 +5,10 @@ mod fetcher;
 mod github;
 
 use fetcher::{Fetcher, Pr};
-use tauri::{Manager, State};
+use tauri::State;
+
+#[cfg(debug_assertions)]
+use tauri::Manager;
 
 struct AppState {
     fetcher: Fetcher,

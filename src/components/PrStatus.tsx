@@ -11,7 +11,7 @@ import {
 } from "./ui/card";
 import { ProgressReport } from "./ProgressReport";
 import { DeleteButton } from "./DeleteButton";
-import { ReactNode, useContext, useState } from "react";
+import { useContext, useState } from "react";
 import {
   Collapsible,
   CollapsibleContent,
