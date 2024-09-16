@@ -25,6 +25,7 @@ async fn fetch_status(
         .fetch(token, owner, repo, pr_number)
         .await
         .map_err(|e| format!("Error fetching pr status: {e}"))?;
+    tracing::debug!(?pr, "got pr");
     Ok(pr)
 }
 

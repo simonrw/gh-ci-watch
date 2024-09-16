@@ -185,15 +185,15 @@ impl Fetcher {
 #[derive(Debug)]
 struct ProgressResult {
     progress: f32,
-    complete: usize,
-    total: usize,
+    complete: u64,
+    total: u64,
 }
 
 fn calculate_progress(jobs: &[RunJob]) -> ProgressResult {
-    let mut n_steps_total = 0;
-    let mut completed_steps = 0;
+    let mut n_steps_total = 0u64;
+    let mut completed_steps = 0u64;
     for job in jobs {
-        let n_steps = job.steps.len();
+        let n_steps = u64::try_from(job.steps.len()).unwrap();
 
         if job.status == "completed" {
             n_steps_total += n_steps;
@@ -233,8 +233,8 @@ pub struct Pr {
     pub status: Status,
     pub title: String,
     pub description: String,
-    pub num_steps: usize,
-    pub num_complete_steps: usize,
+    pub num_steps: u64,
+    pub num_complete_steps: u64,
 }
 
 #[cfg(test)]
