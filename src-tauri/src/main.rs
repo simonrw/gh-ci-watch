@@ -21,14 +21,15 @@ struct AppState {
 async fn fetch_status(
     owner: String,
     repo: String,
+    workflow_id: u64,
     pr_number: u64,
     token: String,
     state: State<'_, AppState>,
 ) -> Result<Pr, String> {
-    tracing::debug!(%owner, %repo, %pr_number, "requesting status");
+    tracing::debug!(%owner, %repo, %workflow_id, %pr_number, "requesting status");
     let fetcher = &state.fetcher;
     let pr = fetcher
-        .fetch(token, owner, repo, pr_number)
+        .fetch(token, owner, repo, workflow_id, pr_number)
         .await
         .map_err(|e| format!("Error fetching pr status: {e}"))?;
     tracing::debug!(?pr, "got pr");

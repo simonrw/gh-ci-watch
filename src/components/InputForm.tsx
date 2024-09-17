@@ -31,7 +31,7 @@ const formSchema = z.object({
   repo: z.string().min(1).max(50, {
     message: "Repo must be less than 50 characters",
   }),
-  workflow: z.string(),
+  workflow: z.coerce.number().min(0),
   pr: z.coerce.number().min(0),
 });
 
@@ -53,7 +53,7 @@ export function InputForm(props: InputFormProps) {
     defaultValues: {
       owner: "",
       repo: "",
-      workflow: "",
+      workflow: 0,
       pr: 0,
     },
   });
@@ -85,6 +85,7 @@ export function InputForm(props: InputFormProps) {
       status: { kind: "unknown" },
       number: values.pr,
       owner: values.owner,
+      workflowId: values.workflow,
       repo: values.repo,
     });
     form.resetField("pr");
@@ -140,7 +141,7 @@ export function InputForm(props: InputFormProps) {
               <FormLabel>Workflow</FormLabel>
               <Select
                 onValueChange={field.onChange}
-                defaultValue={field.value}
+                defaultValue={field.value.toString()}
                 disabled={!workflows?.length}
               >
                 <FormControl>

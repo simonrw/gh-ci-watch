@@ -2,6 +2,7 @@ export type Pr = {
   status: Status;
   number: number;
   repo: string;
+  workflowId: number;
   owner: string;
 };
 

@@ -5,10 +5,6 @@ use crate::github::{
 use color_eyre::eyre::{self, Context};
 use serde::Serialize;
 
-// The workflow id of the tests-ext.yml tests
-// TODO: how to calculate progress? Is the list of jobs/steps consistent?
-const EXT_TESTS_NUMBER: i64 = 107927392;
-
 pub struct Fetcher {
     client: GitHubClient,
 }
@@ -24,6 +20,7 @@ impl Fetcher {
         token: impl AsRef<str>,
         owner: impl AsRef<str>,
         repo: impl AsRef<str>,
+        workflow_id: u64,
         pr_number: u64,
     ) -> eyre::Result<Pr> {
         let token = token.as_ref();
@@ -33,7 +30,7 @@ impl Fetcher {
 
         // fetch workflow runs for branch
         let GetWorkflowRunsResponse { mut workflow_runs } = self
-            .fetch_workflow_runs(owner, repo, pr_info.head.branch, token)
+            .fetch_workflow_runs(owner, repo, workflow_id, pr_info.head.branch, token)
             .await?;
         workflow_runs.sort_by_key(|k| k.run_number);
         let Some(run) = workflow_runs.pop() else {
@@ -172,6 +169,7 @@ impl Fetcher {
         &self,
         owner: &str,
         repo: &str,
+        workflow_id: u64,
         branch_name: impl Into<String>,
         token: &str,
     ) -> eyre::Result<GetWorkflowRunsResponse> {
@@ -180,7 +178,7 @@ impl Fetcher {
             .get(
                 format!(
                     "/repos/{}/{}/actions/workflows/{}/runs",
-                    owner, repo, EXT_TESTS_NUMBER
+                    owner, repo, workflow_id,
                 ),
                 token,
                 Some(GetWorkflowRunsQueryArgs {
