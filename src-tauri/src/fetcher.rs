@@ -1,21 +1,17 @@
 use crate::github::{
     GetPullRequestResponse, GetRunJobsResponse, GetWorkflowRunsQueryArgs, GetWorkflowRunsResponse,
-    GitHubClient, RunJob,
+    GetWorkflowsResponse, GitHubClient, RunJob, WorkflowDetails,
 };
 use color_eyre::eyre::{self, Context};
 use serde::Serialize;
-
-// The workflow id of the tests-ext.yml tests
-// TODO: how to calculate progress? Is the list of jobs/steps consistent?
-const EXT_TESTS_NUMBER: i64 = 107927392;
 
 pub struct Fetcher {
     client: GitHubClient,
 }
 
 impl Fetcher {
-    pub fn new() -> Self {
-        let client = GitHubClient::new();
+    pub fn new(base_url: impl Into<String>) -> Self {
+        let client = GitHubClient::new(base_url);
         Self { client }
     }
 
@@ -24,6 +20,7 @@ impl Fetcher {
         token: impl AsRef<str>,
         owner: impl AsRef<str>,
         repo: impl AsRef<str>,
+        workflow_id: u64,
         pr_number: u64,
     ) -> eyre::Result<Pr> {
         let token = token.as_ref();
@@ -33,7 +30,7 @@ impl Fetcher {
 
         // fetch workflow runs for branch
         let GetWorkflowRunsResponse { mut workflow_runs } = self
-            .fetch_workflow_runs(owner, repo, pr_info.head.branch, token)
+            .fetch_workflow_runs(owner, repo, workflow_id, pr_info.head.branch, token)
             .await?;
         workflow_runs.sort_by_key(|k| k.run_number);
         let Some(run) = workflow_runs.pop() else {
@@ -119,6 +116,37 @@ impl Fetcher {
         Ok(pr_result)
     }
 
+    pub async fn fetch_workflows(
+        &self,
+        token: impl AsRef<str>,
+        owner: impl AsRef<str>,
+        repo: impl AsRef<str>,
+    ) -> eyre::Result<Vec<WorkflowDetails>> {
+        let token = token.as_ref();
+        let owner = owner.as_ref();
+        let repo = repo.as_ref();
+        tracing::debug!(%owner, %repo, "fetching workflows");
+
+        match self
+            .client
+            .get(
+                format!("/repos/{}/{}/actions/workflows", owner, repo),
+                token,
+                None::<()>,
+            )
+            .await
+        {
+            Ok(GetWorkflowsResponse { workflows }) => {
+                tracing::debug!(?workflows, "got workflows for repo");
+                Ok(workflows)
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "error fetching workflows");
+                eyre::bail!("error fetching workflows");
+            }
+        }
+    }
+
     async fn fetch_pr_info(
         &self,
         owner: &str,
@@ -129,10 +157,7 @@ impl Fetcher {
         tracing::debug!("fetching pr info");
         self.client
             .get(
-                format!(
-                    "https://api.github.com/repos/{}/{}/pulls/{}",
-                    owner, repo, pr_number,
-                ),
+                format!("/repos/{}/{}/pulls/{}", owner, repo, pr_number,),
                 token,
                 None::<()>,
             )
@@ -144,6 +169,7 @@ impl Fetcher {
         &self,
         owner: &str,
         repo: &str,
+        workflow_id: u64,
         branch_name: impl Into<String>,
         token: &str,
     ) -> eyre::Result<GetWorkflowRunsResponse> {
@@ -151,8 +177,8 @@ impl Fetcher {
         self.client
             .get(
                 format!(
-                    "https://api.github.com/repos/{}/{}/actions/workflows/{}/runs",
-                    owner, repo, EXT_TESTS_NUMBER
+                    "/repos/{}/{}/actions/workflows/{}/runs",
+                    owner, repo, workflow_id,
                 ),
                 token,
                 Some(GetWorkflowRunsQueryArgs {
@@ -171,10 +197,7 @@ impl Fetcher {
     ) -> eyre::Result<GetRunJobsResponse> {
         self.client
             .get(
-                format!(
-                    "https://api.github.com/repos/{}/{}/actions/runs/{}/jobs",
-                    owner, repo, run_id,
-                ),
+                format!("/repos/{}/{}/actions/runs/{}/jobs", owner, repo, run_id,),
                 token,
                 None::<()>,
             )

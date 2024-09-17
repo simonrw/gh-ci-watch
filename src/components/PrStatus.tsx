@@ -34,7 +34,6 @@ type PrStatusProps = {
 };
 
 export function PrStatus({ pr, removePr }: PrStatusProps) {
-  console.log({ pr });
   const [prevStatus, setPrevStatus] = useState<Status | null>(null);
   const storage = useContext(StorageContext);
 
@@ -46,6 +45,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
           owner: pr.owner,
           repo: pr.repo,
           prNumber: pr.number,
+          workflowId: pr.workflowId,
           token: storage.getToken(),
         });
       return {
