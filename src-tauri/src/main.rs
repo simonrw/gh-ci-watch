@@ -121,7 +121,7 @@ mod tests {
         };
         let workflows_mock = server.mock(|when, then| {
             when.method(GET)
-                .path("/repos/localstack/localstack-ext/actions/workflows");
+                .path("/repos/localstack/localstack/actions/workflows");
             then.status(200)
                 .header("content-type", "application/json")
                 .body(serde_json::to_vec(&response).unwrap());
@@ -141,7 +141,7 @@ mod tests {
                 error: tauri::api::ipc::CallbackFn(1),
                 inner: serde_json::json!( {
                     "owner": "localstack",
-                    "repo": "localstack-ext",
+                    "repo": "localstack",
                     "token": "abc123",
                 }),
             },
