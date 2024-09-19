@@ -63,4 +63,5 @@ export type StatusPayload = {
   numSteps: number;
   numCompleteSteps: number;
   prUrl: string;
+  runUrl: string;
 };

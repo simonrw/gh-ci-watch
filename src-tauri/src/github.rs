@@ -55,6 +55,8 @@ pub struct WorkflowRun {
     // TODO: datetime
     pub run_started_at: String,
     pub head_commit: Commit,
+    #[serde(rename = "html_url")]
+    pub url: String,
 }
 
 #[derive(Debug, Deserialize)]

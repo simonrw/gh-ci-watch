@@ -27,6 +27,7 @@ type PrStatusResponse = {
   num_steps: number;
   num_complete_steps: number;
   pr_url: string;
+  run_url: string;
 };
 
 type PrStatusProps = {
@@ -57,6 +58,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
         numSteps: response.num_steps,
         numCompleteSteps: response.num_complete_steps,
         prUrl: response.pr_url,
+        runUrl: response.run_url,
       };
     },
     refetchInterval: 10000,
@@ -141,7 +143,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
                 <a href={data.prUrl} target="_blank">PR link</a>
               </span>
               <span className="text-xs underline text-muted-foreground">
-                <a href="#" target="_blank">Checks link</a>
+                <a href={data.runUrl} target="_blank">Checks link</a>
               </span>
             </p>
             <DeleteButton pr={pr.number} removePr={removePr} />

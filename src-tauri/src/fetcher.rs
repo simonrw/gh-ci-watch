@@ -69,6 +69,7 @@ impl Fetcher {
                         num_steps: total,
                         num_complete_steps: complete,
                         pr_url: pr_info.url,
+                        run_url: run.url,
                     }
                     // tracing::debug!(before = ?pr.status, after = ?Status::Failed, "updating status");
                     // pr.status = Status::Failed;
@@ -80,6 +81,7 @@ impl Fetcher {
                     num_steps: total,
                     num_complete_steps: complete,
                     pr_url: pr_info.url,
+                    run_url: run.url,
                 },
                 other => {
                     todo!("unhandled combination of status: completed and conclusion: {other:?}")
@@ -92,6 +94,7 @@ impl Fetcher {
                 num_steps: total,
                 num_complete_steps: complete,
                 pr_url: pr_info.url,
+                run_url: run.url,
             },
             "in_progress" => {
                 // get run jobs
@@ -103,6 +106,7 @@ impl Fetcher {
                     num_steps: total,
                     num_complete_steps: complete,
                     pr_url: pr_info.url,
+                    run_url: run.url,
                 }
             }
             "pending" => Pr {
@@ -112,6 +116,7 @@ impl Fetcher {
                 num_steps: total,
                 num_complete_steps: complete,
                 pr_url: pr_info.url,
+                run_url: run.url,
             },
             other => todo!("unhandled status: {other}"),
         };
@@ -264,6 +269,7 @@ pub struct Pr {
     pub num_steps: u64,
     pub num_complete_steps: u64,
     pub pr_url: String,
+    pub run_url: String,
 }
 
 #[cfg(test)]

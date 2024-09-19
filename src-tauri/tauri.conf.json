@@ -6,7 +6,7 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "gh-actions-watch",
+    "productName": "GitHub Actions Monitor",
     "version": "0.1.0"
   },
   "tauri": {
