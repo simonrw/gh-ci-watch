@@ -1,11 +1,11 @@
 {
-  "name": "menubartest",
+  "name": "gh-actions-watch",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "start": "RUST_LOG=menubartest=debug tauri dev",
-    "start:trace": "RUST_LOG=menubartest=trace tauri dev",
+    "start": "RUST_LOG=gh_actions_watch=debug tauri dev",
+    "start:trace": "RUST_LOG=gh_actions_watch=trace tauri dev",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",

@@ -6,7 +6,7 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "menubartest",
+    "productName": "gh-actions-watch",
     "version": "0.1.0"
   },
   "tauri": {
@@ -23,7 +23,7 @@
     "windows": [
       {
         "fullscreen": false,
-        "title": "menubartest",
+        "title": "gh-actions-watch",
         "width": 600,
         "height": 600
       }
@@ -34,7 +34,7 @@
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "com.menubartest.app",
+      "identifier": "com.gh-actions-watch.app",
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",

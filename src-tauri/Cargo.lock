@@ -1504,6 +1504,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "gh-actions-watch"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "clap",
+ "color-eyre",
+ "httpmock",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "gimli"
 version = "0.28.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2395,24 +2413,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "menubartest"
-version = "0.1.0"
-dependencies = [
- "approx",
- "clap",
- "color-eyre",
- "httpmock",
- "reqwest",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tokio",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
