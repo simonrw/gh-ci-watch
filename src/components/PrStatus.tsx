@@ -26,6 +26,7 @@ type PrStatusResponse = {
   description: string;
   num_steps: number;
   num_complete_steps: number;
+  pr_url: string;
 };
 
 type PrStatusProps = {
@@ -40,7 +41,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
   const { data, isLoading, error } = useQuery<StatusPayload>({
     queryKey: ["pr", pr.number],
     queryFn: async () => {
-      const { status, title, description, num_steps, num_complete_steps } =
+      const response =
         await invoke<PrStatusResponse>("fetch_status", {
           owner: pr.owner,
           repo: pr.repo,
@@ -48,12 +49,14 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
           workflowId: pr.workflowId,
           token: storage.getToken(),
         });
+
       return {
-        status: statusFromRaw(status),
-        title,
-        description,
-        numSteps: num_steps,
-        numCompleteSteps: num_complete_steps,
+        status: statusFromRaw(response.status),
+        title: response.title,
+        description: response.description,
+        numSteps: response.num_steps,
+        numCompleteSteps: response.num_complete_steps,
+        prUrl: response.pr_url,
       };
     },
     refetchInterval: 10000,

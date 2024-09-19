@@ -68,6 +68,7 @@ impl Fetcher {
                         description: pr_info.description,
                         num_steps: total,
                         num_complete_steps: complete,
+                        pr_url: pr_info.url,
                     }
                     // tracing::debug!(before = ?pr.status, after = ?Status::Failed, "updating status");
                     // pr.status = Status::Failed;
@@ -78,6 +79,7 @@ impl Fetcher {
                     description: pr_info.description,
                     num_steps: total,
                     num_complete_steps: complete,
+                    pr_url: pr_info.url,
                 },
                 other => {
                     todo!("unhandled combination of status: completed and conclusion: {other:?}")
@@ -89,6 +91,7 @@ impl Fetcher {
                 description: pr_info.description,
                 num_steps: total,
                 num_complete_steps: complete,
+                pr_url: pr_info.url,
             },
             "in_progress" => {
                 // get run jobs
@@ -99,6 +102,7 @@ impl Fetcher {
                     description: pr_info.description,
                     num_steps: total,
                     num_complete_steps: complete,
+                    pr_url: pr_info.url,
                 }
             }
             "pending" => Pr {
@@ -107,6 +111,7 @@ impl Fetcher {
                 description: pr_info.description,
                 num_steps: total,
                 num_complete_steps: complete,
+                pr_url: pr_info.url,
             },
             other => todo!("unhandled status: {other}"),
         };
@@ -157,7 +162,7 @@ impl Fetcher {
         tracing::debug!("fetching pr info");
         self.client
             .get(
-                format!("/repos/{}/{}/pulls/{}", owner, repo, pr_number,),
+                format!("/repos/{}/{}/pulls/{}", owner, repo, pr_number),
                 token,
                 None::<()>,
             )
@@ -258,6 +263,7 @@ pub struct Pr {
     pub description: String,
     pub num_steps: u64,
     pub num_complete_steps: u64,
+    pub pr_url: String,
 }
 
 #[cfg(test)]
