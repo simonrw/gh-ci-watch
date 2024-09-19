@@ -3,7 +3,7 @@
 use color_eyre::eyre::{self, Context};
 use reqwest::{
     header::{HeaderMap, HeaderValue, USER_AGENT},
-    Client, IntoUrl,
+    Client,
 };
 use serde::{Deserialize, Serialize};
 

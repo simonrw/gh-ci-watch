@@ -133,9 +133,17 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
       <CardHeader>
         <CardTitle>
           <div className="flex justify-between">
-            <div>
-              <p>{data.title}</p>
-            </div>
+            <p className="flex gap-4 items-baseline">
+              <span>
+                {data.title}
+              </span>
+              <span className="text-xs underline text-muted-foreground">
+                <a href={data.prUrl} target="_blank">PR link</a>
+              </span>
+              <span className="text-xs underline text-muted-foreground">
+                <a href="#" target="_blank">Checks link</a>
+              </span>
+            </p>
             <DeleteButton pr={pr.number} removePr={removePr} />
           </div>
         </CardTitle>
