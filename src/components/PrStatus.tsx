@@ -17,7 +17,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./ui/collapsible";
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, ClipboardCheck } from "lucide-react";
 import { StorageContext } from "@/lib/storage";
 
 type PrStatusResponse = {
@@ -42,14 +42,13 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
   const { data, isLoading, error } = useQuery<StatusPayload>({
     queryKey: ["pr", pr.number],
     queryFn: async () => {
-      const response =
-        await invoke<PrStatusResponse>("fetch_status", {
-          owner: pr.owner,
-          repo: pr.repo,
-          prNumber: pr.number,
-          workflowId: pr.workflowId,
-          token: storage.getToken(),
-        });
+      const response = await invoke<PrStatusResponse>("fetch_status", {
+        owner: pr.owner,
+        repo: pr.repo,
+        prNumber: pr.number,
+        workflowId: pr.workflowId,
+        token: storage.getToken(),
+      });
 
       return {
         status: statusFromRaw(response.status),
@@ -135,15 +134,16 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
       <CardHeader>
         <CardTitle>
           <div className="flex justify-between">
-            <p className="flex gap-4 items-baseline">
-              <span>
-                {data.title}
+            <p className="flex gap-4 items-center">
+              <span className="underline">
+                <a href={data.prUrl} target="_blank">
+                  {data.title}
+                </a>
               </span>
               <span className="text-xs underline text-muted-foreground">
-                <a href={data.prUrl} target="_blank">PR link</a>
-              </span>
-              <span className="text-xs underline text-muted-foreground">
-                <a href={data.runUrl} target="_blank">Checks link</a>
+                <a href={data.runUrl} target="_blank">
+                  <ClipboardCheck />
+                </a>
               </span>
             </p>
             <DeleteButton pr={pr.number} removePr={removePr} />
