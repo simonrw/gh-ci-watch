@@ -93,76 +93,78 @@ export function InputForm(props: InputFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <FormField
-          control={form.control}
-          name="owner"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Owner</FormLabel>
-              <FormControl>
-                <Input placeholder="Owner" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="repo"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Repo</FormLabel>
-              <FormControl>
-                <Input placeholder="Repo" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="pr"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>PR #</FormLabel>
-              <FormControl>
-                <Input type="number" placeholder="PR #" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="workflow"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Workflow</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value.toString()}
-                disabled={!workflows?.length}
-              >
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-8">
+        <div className="flex flex-col gap-2">
+          <FormField
+            control={form.control}
+            name="owner"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Owner</FormLabel>
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a workflow" />
-                  </SelectTrigger>
+                  <Input placeholder="Owner" {...field} />
                 </FormControl>
-                <SelectContent>
-                  {(workflows || []).map((workflow) => {
-                    return (
-                      <SelectItem value={workflow.id.toString()}>
-                        {workflow.name}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="repo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Repo</FormLabel>
+                <FormControl>
+                  <Input placeholder="Repo" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="pr"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>PR #</FormLabel>
+                <FormControl>
+                  <Input type="number" placeholder="PR #" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="workflow"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Workflow</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value.toString()}
+                  disabled={!workflows?.length}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a workflow" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {(workflows || []).map((workflow) => {
+                      return (
+                        <SelectItem value={workflow.id.toString()}>
+                          {workflow.name}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <Button variant="secondary" type="submit">
           Submit
         </Button>
