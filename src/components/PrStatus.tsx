@@ -58,6 +58,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
       return {
         status: statusFromRaw(response.status),
         title: response.title,
+        number: pr.number,
         description: response.description,
         numSteps: response.num_steps,
         numCompleteSteps: response.num_complete_steps,
@@ -191,22 +192,20 @@ function IconLink(props: IconLinkProps) {
   );
 }
 
-function createNotification(pr: StatusPayload) {
+function createNotification(pr: StatusPayload): Notification | null {
   let title;
-  let body;
+  const body = `${pr.title} (#${pr.number})`;
 
   switch (pr.status.kind) {
     case "succeeded":
-      title = "PR action succeeded!";
-      body = ``;
+      title = "Success!";
       break;
     case "failed":
-      title = "PR action failed";
-      body = ``;
+      title = "Failure";
       break;
     default:
-      return;
+      return null;
   }
 
-  new Notification(title, { body });
+  return new Notification(title, { body });
 }

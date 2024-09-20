@@ -59,6 +59,7 @@ export const statusFromRaw = (raw: RawStatus): Status => {
 export type StatusPayload = {
   status: Status;
   title: string;
+  number: number;
   description: string;
   numSteps: number;
   numCompleteSteps: number;
