@@ -11,7 +11,7 @@ import {
 } from "./ui/card";
 import { ProgressReport } from "./ProgressReport";
 import { DeleteButton } from "./DeleteButton";
-import { useContext, useState } from "react";
+import { ReactElement, useContext, useState } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -23,6 +23,7 @@ import {
   GitPullRequestArrow,
 } from "lucide-react";
 import { StorageContext } from "@/lib/storage";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 type PrStatusResponse = {
   status: RawStatus;
@@ -139,16 +140,12 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
           <div className="flex justify-between">
             <p className="flex gap-4 items-center">
               <span className="flex gap-2">
-                <span className="text-xs underline text-muted-foreground">
-                  <a href={data.prUrl} target="_blank">
-                    <GitPullRequestArrow />
-                  </a>
-                </span>
-                <span className="text-xs underline text-muted-foreground">
-                  <a href={data.runUrl} target="_blank">
-                    <ClipboardCheck />
-                  </a>
-                </span>
+                <IconLink url={data.prUrl} tooltip="Pull request">
+                  <GitPullRequestArrow />
+                </IconLink>
+                <IconLink url={data.runUrl} tooltip="Actions run">
+                  <ClipboardCheck />
+                </IconLink>
               </span>
               <span>{data.title}</span>
             </p>
@@ -177,5 +174,28 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
         />
       </CardContent>
     </Card>
+  );
+}
+
+type IconLinkProps = {
+  url: string;
+  tooltip: string;
+  children: ReactElement;
+};
+
+function IconLink(props: IconLinkProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="text-xs text-muted-foreground">
+          <a href={props.url} target="_blank">
+            {props.children}
+          </a>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{props.tooltip}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
