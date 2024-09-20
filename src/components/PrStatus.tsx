@@ -17,7 +17,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./ui/collapsible";
-import { ChevronsUpDown, ClipboardCheck } from "lucide-react";
+import {
+  ChevronsUpDown,
+  ClipboardCheck,
+  GitPullRequestArrow,
+} from "lucide-react";
 import { StorageContext } from "@/lib/storage";
 
 type PrStatusResponse = {
@@ -62,7 +66,6 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
     },
     refetchInterval: 10000,
   });
-  console.log({ isLoading, data, error });
 
   if (error)
     return (
@@ -135,16 +138,19 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
         <CardTitle>
           <div className="flex justify-between">
             <p className="flex gap-4 items-center">
-              <span className="underline">
-                <a href={data.prUrl} target="_blank">
-                  {data.title}
-                </a>
+              <span className="flex gap-2">
+                <span className="text-xs underline text-muted-foreground">
+                  <a href={data.prUrl} target="_blank">
+                    <GitPullRequestArrow />
+                  </a>
+                </span>
+                <span className="text-xs underline text-muted-foreground">
+                  <a href={data.runUrl} target="_blank">
+                    <ClipboardCheck />
+                  </a>
+                </span>
               </span>
-              <span className="text-xs underline text-muted-foreground">
-                <a href={data.runUrl} target="_blank">
-                  <ClipboardCheck />
-                </a>
-              </span>
+              <span>{data.title}</span>
             </p>
             <DeleteButton pr={pr.number} removePr={removePr} />
           </div>
