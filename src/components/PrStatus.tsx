@@ -147,7 +147,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
                   <ClipboardCheck />
                 </IconLink>
               </span>
-              <span>{data.title}</span>
+              <span className="text-xl">{data.title}</span>
             </p>
             <DeleteButton pr={pr.number} removePr={removePr} />
           </div>
