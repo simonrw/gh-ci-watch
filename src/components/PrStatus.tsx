@@ -105,16 +105,7 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
 
   if (data.status !== prevStatus) {
     setPrevStatus(data.status);
-
-    if (data.status.kind === "succeeded") {
-      new Notification("PR action succeeded!", {
-        body: "The PR completed successfully",
-      });
-    } else if (data.status.kind === "failed") {
-      new Notification("PR action failed", {
-        body: "The PR completed did not succeed",
-      });
-    }
+    createNotification(data);
   }
 
   let borderColor = "";
@@ -198,4 +189,24 @@ function IconLink(props: IconLinkProps) {
       </TooltipContent>
     </Tooltip>
   );
+}
+
+function createNotification(pr: StatusPayload) {
+  let title;
+  let body;
+
+  switch (pr.status.kind) {
+    case "succeeded":
+      title = "PR action succeeded!";
+      body = ``;
+      break;
+    case "failed":
+      title = "PR action failed";
+      body = ``;
+      break;
+    default:
+      return;
+  }
+
+  new Notification(title, { body });
 }
