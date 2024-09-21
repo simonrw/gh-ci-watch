@@ -1,6 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::collections::{hash_map::Entry, HashMap};
+
 use color_eyre::eyre::{self, Context};
 
 mod fetcher;
@@ -12,9 +14,17 @@ use tauri::State;
 
 #[cfg(debug_assertions)]
 use tauri::Manager;
+use tokio::sync::Mutex;
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct WorkflowCacheKey {
+    repo: String,
+    owner: String,
+}
 
 struct AppState {
     fetcher: Fetcher,
+    workflow_cache: Mutex<HashMap<WorkflowCacheKey, Vec<WorkflowDetails>>>,
 }
 
 #[tauri::command]
@@ -45,16 +55,33 @@ async fn fetch_workflows_for_repo(
 ) -> Result<Vec<WorkflowDetails>, String> {
     tracing::debug!(%owner, %repo, "requesting workflows for repo");
 
-    let fetcher = &state.fetcher;
-    let workflows = fetcher
-        .fetch_workflows(token, &owner, &repo)
-        .await
-        .map_err(|e| {
-            tracing::warn!(error = %e, %owner, %repo, "error fetching workflows");
-            format!("Error fetching workflows for '{owner}/{repo}': {e}")
-        })?;
-    tracing::debug!(?workflows, "got workflows");
-    Ok(workflows)
+    let cache_key = WorkflowCacheKey {
+        repo: repo.clone(),
+        owner: owner.clone(),
+    };
+
+    let mut cache = state.workflow_cache.lock().await;
+
+    // TODO: better entry API
+    match cache.entry(cache_key.clone()) {
+        Entry::Occupied(entry) => {
+            tracing::trace!(?cache_key, "workflow cache hit");
+            Ok(entry.get().clone())
+        }
+        Entry::Vacant(vacant_entry) => {
+            tracing::trace!(?cache_key, "workflow cache miss");
+            let fetcher = &state.fetcher;
+            let workflows = fetcher
+                .fetch_workflows(token, &owner, &repo)
+                .await
+                .map_err(|e| {
+                    tracing::warn!(error = %e, %owner, %repo, "error fetching workflows");
+                    format!("Error fetching workflows for '{owner}/{repo}': {e}")
+                })?;
+            vacant_entry.insert(workflows.clone());
+            Ok(workflows)
+        }
+    }
 }
 
 fn create_app<R: tauri::Runtime>(
@@ -62,7 +89,10 @@ fn create_app<R: tauri::Runtime>(
     base_url: impl Into<String>,
 ) -> eyre::Result<tauri::App<R>> {
     let fetcher = Fetcher::new(base_url);
-    let app_state = AppState { fetcher };
+    let app_state = AppState {
+        fetcher,
+        workflow_cache: Default::default(),
+    };
 
     builder
         .setup(|app| {
