@@ -57,6 +57,8 @@ export const statusFromRaw = (raw: RawStatus): Status => {
 };
 
 export type StatusPayload = {
+  owner: string;
+  repo: string;
   status: Status;
   title: string;
   number: number;

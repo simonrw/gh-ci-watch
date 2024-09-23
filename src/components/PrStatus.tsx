@@ -56,6 +56,8 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
       });
 
       return {
+        owner: pr.owner,
+        repo: pr.repo,
         status: statusFromRaw(response.status),
         title: response.title,
         number: pr.number,
@@ -198,13 +200,15 @@ function createNotification(pr: StatusPayload): Notification | null {
 
   switch (pr.status.kind) {
     case "succeeded":
-      title = "Success!";
+      title = `${pr.owner}/${pr.repo}#${pr.number} succeeded!`;
       break;
     case "failed":
-      title = "Failure";
+      title = `${pr.owner}/${pr.repo}#${pr.number} failed`;
       break;
     default:
-      return null;
+      throw new Error(
+        `Unhandled pr status for notification: ${pr.status.kind}`,
+      );
   }
 
   return new Notification(title, { body });
