@@ -205,10 +205,10 @@ function createNotification(pr: StatusPayload): Notification | null {
     case "failed":
       title = `${pr.owner}/${pr.repo}#${pr.number} failed`;
       break;
-    default:
-      throw new Error(
-        `Unhandled pr status for notification: ${pr.status.kind}`,
-      );
+    case "queued":
+    case "in-progress":
+    case "unknown":
+      return null;
   }
 
   return new Notification(title, { body });
