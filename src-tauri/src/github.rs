@@ -25,7 +25,7 @@ pub struct GetPullRequestResponse {
     pub title: String,
     pub head: Head,
     #[serde(rename = "body")]
-    pub description: String,
+    pub description: Option<String>,
     #[serde(rename = "html_url")]
     pub url: String,
 }

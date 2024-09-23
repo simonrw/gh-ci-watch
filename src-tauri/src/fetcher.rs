@@ -65,7 +65,7 @@ impl Fetcher {
                     Pr {
                         status: Status::Failed,
                         title: pr_info.title,
-                        description: pr_info.description,
+                        description: pr_info.description.unwrap_or_else(String::new),
                         num_steps: total,
                         num_complete_steps: complete,
                         pr_url: pr_info.url,
@@ -77,7 +77,7 @@ impl Fetcher {
                 Some("success") => Pr {
                     status: Status::Succeeded,
                     title: pr_info.title,
-                    description: pr_info.description,
+                    description: pr_info.description.unwrap_or_default(),
                     num_steps: total,
                     num_complete_steps: complete,
                     pr_url: pr_info.url,
@@ -90,7 +90,7 @@ impl Fetcher {
             "queued" => Pr {
                 status: Status::Queued,
                 title: pr_info.title,
-                description: pr_info.description,
+                description: pr_info.description.unwrap_or_default(),
                 num_steps: total,
                 num_complete_steps: complete,
                 pr_url: pr_info.url,
@@ -102,7 +102,7 @@ impl Fetcher {
                 Pr {
                     status,
                     title: pr_info.title,
-                    description: pr_info.description,
+                    description: pr_info.description.unwrap_or_default(),
                     num_steps: total,
                     num_complete_steps: complete,
                     pr_url: pr_info.url,
@@ -112,7 +112,7 @@ impl Fetcher {
             "pending" => Pr {
                 status: Status::Queued,
                 title: pr_info.title,
-                description: pr_info.description,
+                description: pr_info.description.unwrap_or_default(),
                 num_steps: total,
                 num_complete_steps: complete,
                 pr_url: pr_info.url,
