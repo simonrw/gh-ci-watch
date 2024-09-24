@@ -20,6 +20,11 @@ however I often lost track of which notification belonged to which branch. I wan
 * Inline description of the PR for context
 * Dark and light modes
 
+## Installation
+
+Visit the [project releases](https://github.com/simonrw/gh-ci-watch/releases) and download the latest application for your architecture.
+
+
 ## Usage
 
 On startup, the application will ask for your GitHub token. You can use `gh auth token` if you have installed the GitHub CLI, or you can go to [your tokens settings page](https://github.com/settings/tokens?type=beta) and add a token. Then paste your token in the initial screen of the app.
