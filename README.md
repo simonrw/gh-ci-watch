@@ -1,7 +1,13 @@
-# Tauri + React + Typescript
+# GitHub Actions Monitor
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+_Track your CI runs on PRs in a handy and beautiful desktop app._
 
-## Recommended IDE Setup
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Features
+
+
+## Usage
+
+
+
+## Development
