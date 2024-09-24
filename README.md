@@ -24,9 +24,20 @@ however I often lost track of which notification belonged to which branch. I wan
 
 On startup, the application will ask for your GitHub token. You can use `gh auth token` if you have installed the GitHub CLI, or you can go to [your tokens settings page](https://github.com/settings/tokens?type=beta) and add a token. Then paste your token in the initial screen of the app.
 
-**TODO: document token scopes**
+### Required token scopes
 
+When creating a token, we recommend using "Fine-grained tokens", as this minimises the permissions granted.
 
+This project requires _read-only_ access to the following scopes:
+
+* `actions` for:
+    * `/repos/{owner}/{repo}/actions/workflows`
+    * `/repos/{owner}/{repo}/actions/workflows/{workflow_number}/runs`
+    * `/repos/{owner}/{repo}/actions/runs/{run_number}/jobs`
+* `contents` for:
+    * `/repos/{owner}/{repo}/pulls/{pr_number}`
+
+for any repository you wish to track.
 
 ## Development
 

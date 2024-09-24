@@ -137,6 +137,7 @@ impl Fetcher {
         let repo = repo.as_ref();
         tracing::debug!(%owner, %repo, "fetching workflows");
 
+        // requires `actions:read`
         match self
             .client
             .get(
@@ -165,6 +166,7 @@ impl Fetcher {
         token: &str,
     ) -> eyre::Result<GetPullRequestResponse> {
         tracing::debug!("fetching pr info");
+        // requires `contents:read`
         self.client
             .get(
                 format!("/repos/{}/{}/pulls/{}", owner, repo, pr_number),
@@ -184,6 +186,7 @@ impl Fetcher {
         token: &str,
     ) -> eyre::Result<GetWorkflowRunsResponse> {
         tracing::debug!("fetching workflow runs");
+        // requires `actions:read`
         self.client
             .get(
                 format!(
@@ -205,6 +208,7 @@ impl Fetcher {
         run_id: u64,
         token: &str,
     ) -> eyre::Result<GetRunJobsResponse> {
+        // requires `actions:read`
         self.client
             .get(
                 format!("/repos/{}/{}/actions/runs/{}/jobs", owner, repo, run_id,),
