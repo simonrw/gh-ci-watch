@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AppConfig {
-    enable_sentry: bool,
+    pub enable_sentry: bool,
 }
 
 impl Default for AppConfig {

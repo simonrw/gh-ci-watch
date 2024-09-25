@@ -12,6 +12,7 @@ mod github;
 use config::AppConfig;
 use fetcher::{Fetcher, Pr};
 use github::WorkflowDetails;
+use sentry::ClientInitGuard;
 use tauri::State;
 
 #[cfg(debug_assertions)]
@@ -114,12 +115,30 @@ fn create_app<R: tauri::Runtime>(
         .wrap_err("building tauri application")
 }
 
+fn init_sentry(enable: bool) -> Option<ClientInitGuard> {
+    if enable {
+        tracing::debug!("enabling sentry integration for error reporting");
+        let guard = sentry::init((
+            "https://f4117328b0e50349c718cd9a952f31f3@o366030.ingest.us.sentry.io/4508015566848000",
+            sentry::ClientOptions {
+                release: sentry::release_name!(),
+                ..Default::default()
+            },
+        ));
+        Some(guard)
+    } else {
+        None
+    }
+}
+
 fn main() {
     color_eyre::install().unwrap();
     tracing_subscriber::fmt::init();
 
     let config = AppConfig::from_default_path().unwrap_or_default();
     tracing::debug!(?config, "loaded config");
+
+    let _sentry_guard = init_sentry(config.enable_sentry);
 
     let app = create_app(tauri::Builder::default(), "https://api.github.com").unwrap();
     app.run(|_app_handle, _event| {});
