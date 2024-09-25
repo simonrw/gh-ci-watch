@@ -1,7 +1,10 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::collections::{hash_map::Entry, HashMap};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    sync::Arc,
+};
 
 use color_eyre::eyre::{self, Context};
 
@@ -91,8 +94,9 @@ async fn fetch_workflows_for_repo(
 fn create_app<R: tauri::Runtime>(
     builder: tauri::Builder<R>,
     base_url: impl Into<String>,
+    app_config: Arc<AppConfig>,
 ) -> eyre::Result<tauri::App<R>> {
-    let fetcher = Fetcher::new(base_url);
+    let fetcher = Fetcher::new(base_url, app_config);
     let app_state = AppState {
         fetcher,
         workflow_cache: Default::default(),
@@ -143,22 +147,25 @@ fn main() {
         .with(sentry::integrations::tracing::layer())
         .init();
 
-    let config = AppConfig::from_default_path().unwrap_or_default();
+    let config = Arc::new(AppConfig::from_default_path().unwrap_or_default());
     tracing::debug!(?config, "loaded config");
 
     let _sentry_guard = init_sentry(config.enable_sentry);
 
-    let app = create_app(tauri::Builder::default(), "https://api.github.com").unwrap();
+    let app = create_app(tauri::Builder::default(), "https://api.github.com", config).unwrap();
     app.run(|_app_handle, _event| {});
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use color_eyre::eyre::{self, Context};
     use httpmock::prelude::*;
     use tauri::Manager;
 
     use crate::{
+        config::AppConfig,
         create_app,
         github::{GetWorkflowsResponse, WorkflowDetails},
     };
@@ -189,8 +196,12 @@ mod tests {
                 .body(serde_json::to_vec(&response).unwrap());
         });
 
-        let app =
-            create_app(tauri::test::mock_builder(), server.base_url()).expect("creating mock app");
+        let app = create_app(
+            tauri::test::mock_builder(),
+            server.base_url(),
+            Default::default(),
+        )
+        .expect("creating mock app");
         let window = app.get_window("main").unwrap();
 
         tauri::test::assert_ipc_response(
