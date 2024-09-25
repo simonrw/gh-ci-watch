@@ -5,9 +5,11 @@ use std::collections::{hash_map::Entry, HashMap};
 
 use color_eyre::eyre::{self, Context};
 
+mod config;
 mod fetcher;
 mod github;
 
+use config::AppConfig;
 use fetcher::{Fetcher, Pr};
 use github::WorkflowDetails;
 use tauri::State;
@@ -115,6 +117,9 @@ fn create_app<R: tauri::Runtime>(
 fn main() {
     color_eyre::install().unwrap();
     tracing_subscriber::fmt::init();
+
+    let config = AppConfig::from_default_path().unwrap_or_default();
+    tracing::debug!(?config, "loaded config");
 
     let app = create_app(tauri::Builder::default(), "https://api.github.com").unwrap();
     app.run(|_app_handle, _event| {});
