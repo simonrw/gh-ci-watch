@@ -1,11 +1,15 @@
 #![allow(dead_code)]
 
+use std::sync::Arc;
+
 use color_eyre::eyre::{self, Context};
 use reqwest::{
     header::{HeaderMap, HeaderValue, USER_AGENT},
     Client,
 };
 use serde::{Deserialize, Serialize};
+
+use crate::config::AppConfig;
 
 #[derive(Debug, Deserialize)]
 pub struct Commit {
@@ -100,11 +104,12 @@ pub struct GitHubClient {
     client: Client,
     // TODO: borrow
     base_url: String,
+    app_config: Arc<AppConfig>,
 }
 
 // Constructors
 impl GitHubClient {
-    pub fn new(base_url: impl Into<String>) -> Self {
+    pub fn new(base_url: impl Into<String>, app_config: Arc<AppConfig>) -> Self {
         let mut headers = HeaderMap::new();
         headers.append(USER_AGENT, HeaderValue::from_static("gh-ci-watch"));
 
@@ -115,6 +120,7 @@ impl GitHubClient {
         Self {
             client,
             base_url: base_url.into(),
+            app_config,
         }
     }
 
@@ -137,8 +143,14 @@ impl GitHubClient {
 
         tracing::debug!("sending http request");
         let response = builder.send().await.wrap_err("sending GET request")?;
-        if let Err(e) = response.error_for_status_ref() {
+        if let Err(e) = response
+            .error_for_status_ref()
+            .context("bad status response")
+        {
             tracing::warn!(error = %e, "bad status from GitHub");
+            if self.app_config.enable_sentry {
+                sentry_eyre::capture_report(&e);
+            }
             eyre::bail!("bad error status: {e}");
         }
         tracing::debug!("got http response");

@@ -1,20 +1,27 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::collections::{hash_map::Entry, HashMap};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    sync::Arc,
+};
 
 use color_eyre::eyre::{self, Context};
 
+mod config;
 mod fetcher;
 mod github;
 
+use config::AppConfig;
 use fetcher::{Fetcher, Pr};
 use github::WorkflowDetails;
+use sentry::ClientInitGuard;
 use tauri::State;
 
 #[cfg(debug_assertions)]
 use tauri::Manager;
 use tokio::sync::Mutex;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct WorkflowCacheKey {
@@ -87,8 +94,9 @@ async fn fetch_workflows_for_repo(
 fn create_app<R: tauri::Runtime>(
     builder: tauri::Builder<R>,
     base_url: impl Into<String>,
+    app_config: Arc<AppConfig>,
 ) -> eyre::Result<tauri::App<R>> {
-    let fetcher = Fetcher::new(base_url);
+    let fetcher = Fetcher::new(base_url, app_config);
     let app_state = AppState {
         fetcher,
         workflow_cache: Default::default(),
@@ -112,21 +120,52 @@ fn create_app<R: tauri::Runtime>(
         .wrap_err("building tauri application")
 }
 
+fn init_sentry(enable: bool) -> Option<ClientInitGuard> {
+    if enable {
+        tracing::debug!("enabling sentry integration for error reporting");
+
+        let options = sentry::ClientOptions {
+            release: sentry::release_name!(),
+            traces_sample_rate: 1.0,
+            ..Default::default()
+        };
+        let guard = sentry::init((
+            "https://f4117328b0e50349c718cd9a952f31f3@o366030.ingest.us.sentry.io/4508015566848000",
+            options,
+        ));
+        Some(guard)
+    } else {
+        None
+    }
+}
+
 fn main() {
     color_eyre::install().unwrap();
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(sentry::integrations::tracing::layer())
+        .init();
 
-    let app = create_app(tauri::Builder::default(), "https://api.github.com").unwrap();
+    let config = Arc::new(AppConfig::from_default_path().unwrap_or_default());
+    tracing::debug!(?config, "loaded config");
+
+    let _sentry_guard = init_sentry(config.enable_sentry);
+
+    let app = create_app(tauri::Builder::default(), "https://api.github.com", config).unwrap();
     app.run(|_app_handle, _event| {});
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use color_eyre::eyre::{self, Context};
     use httpmock::prelude::*;
     use tauri::Manager;
 
     use crate::{
+        config::AppConfig,
         create_app,
         github::{GetWorkflowsResponse, WorkflowDetails},
     };
@@ -157,8 +196,12 @@ mod tests {
                 .body(serde_json::to_vec(&response).unwrap());
         });
 
-        let app =
-            create_app(tauri::test::mock_builder(), server.base_url()).expect("creating mock app");
+        let app = create_app(
+            tauri::test::mock_builder(),
+            server.base_url(),
+            Default::default(),
+        )
+        .expect("creating mock app");
         let window = app.get_window("main").unwrap();
 
         tauri::test::assert_ipc_response(

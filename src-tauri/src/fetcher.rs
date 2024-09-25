@@ -1,6 +1,11 @@
-use crate::github::{
-    GetPullRequestResponse, GetRunJobsResponse, GetWorkflowRunsQueryArgs, GetWorkflowRunsResponse,
-    GetWorkflowsResponse, GitHubClient, RunJob, WorkflowDetails,
+use std::sync::Arc;
+
+use crate::{
+    config::AppConfig,
+    github::{
+        GetPullRequestResponse, GetRunJobsResponse, GetWorkflowRunsQueryArgs,
+        GetWorkflowRunsResponse, GetWorkflowsResponse, GitHubClient, RunJob, WorkflowDetails,
+    },
 };
 use color_eyre::eyre::{self, Context};
 use serde::Serialize;
@@ -10,8 +15,8 @@ pub struct Fetcher {
 }
 
 impl Fetcher {
-    pub fn new(base_url: impl Into<String>) -> Self {
-        let client = GitHubClient::new(base_url);
+    pub fn new(base_url: impl Into<String>, app_config: Arc<AppConfig>) -> Self {
+        let client = GitHubClient::new(base_url, app_config);
         Self { client }
     }
 
