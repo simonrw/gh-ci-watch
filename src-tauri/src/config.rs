@@ -3,8 +3,18 @@ use std::path::Path;
 use color_eyre::eyre::{self, Context};
 use serde::{Deserialize, Serialize};
 
-#[derive(Default, Serialize, Deserialize, Debug)]
-pub struct AppConfig {}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AppConfig {
+    enable_sentry: bool,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            enable_sentry: true,
+        }
+    }
+}
 
 impl AppConfig {
     pub fn from_default_path() -> eyre::Result<Self> {
