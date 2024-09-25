@@ -44,6 +44,16 @@ This project requires _read-only_ access to the following scopes:
 
 for any repository you wish to track.
 
+## Config file
+
+This application can be configured by creating a `gh-actions-monitor/config.toml` file in your systems configuration dir. This file should be placed in your `XDG_CONFIG_HOME` directory. See the [table in the documentation to the `dirs::config_dir` function](https://docs.rs/dirs/latest/dirs/fn.config_dir.html) to locate your `XDG_CONFIG_HOME` directory.
+
+For example, on Linux this configuration file will be located at `~/.config/gh-actions-monitor/config.toml`.
+
+### Error reporting
+
+This application reports errors with [Sentry](https://sentry.io/). If you do not wish to send error reports, you can disable this functionality by setting `enable_sentry = false` in your [config file](#config-file).
+
 ## Development
 
 This project is written in Rust using the Tauri application framework.
