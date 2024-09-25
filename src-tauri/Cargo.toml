@@ -17,12 +17,13 @@ serde_json = "1"
 color-eyre = "0.6.3"
 reqwest = { version = "0.12.7", features = ["blocking", "json"] }
 tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["fmt"] }
 clap = { version = "4.5.18", features = ["derive"] }
+tracing-subscriber = { version = "0.3.18", features = ["fmt", "env-filter"] }
 tokio = { version = "1.40.0", features = ["macros", "time"] }
 toml = "0.8.19"
 dirs = "5.0.1"
-sentry = "0.34.0"
+sentry = { version = "0.34.0", features = ["tracing"] }
+sentry-eyre = "0.1.0"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

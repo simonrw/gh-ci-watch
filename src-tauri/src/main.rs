@@ -18,6 +18,7 @@ use tauri::State;
 #[cfg(debug_assertions)]
 use tauri::Manager;
 use tokio::sync::Mutex;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct WorkflowCacheKey {
@@ -118,12 +119,15 @@ fn create_app<R: tauri::Runtime>(
 fn init_sentry(enable: bool) -> Option<ClientInitGuard> {
     if enable {
         tracing::debug!("enabling sentry integration for error reporting");
+
+        let options = sentry::ClientOptions {
+            release: sentry::release_name!(),
+            traces_sample_rate: 1.0,
+            ..Default::default()
+        };
         let guard = sentry::init((
             "https://f4117328b0e50349c718cd9a952f31f3@o366030.ingest.us.sentry.io/4508015566848000",
-            sentry::ClientOptions {
-                release: sentry::release_name!(),
-                ..Default::default()
-            },
+            options,
         ));
         Some(guard)
     } else {
@@ -133,7 +137,11 @@ fn init_sentry(enable: bool) -> Option<ClientInitGuard> {
 
 fn main() {
     color_eyre::install().unwrap();
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(sentry::integrations::tracing::layer())
+        .init();
 
     let config = AppConfig::from_default_path().unwrap_or_default();
     tracing::debug!(?config, "loaded config");

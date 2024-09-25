@@ -1557,6 +1557,7 @@ dependencies = [
  "httpmock",
  "reqwest",
  "sentry",
+ "sentry-eyre",
  "serde",
  "serde_json",
  "tauri",
@@ -3614,14 +3615,26 @@ dependencies = [
  "httpdate",
  "native-tls",
  "reqwest",
- "sentry-backtrace",
+ "sentry-backtrace 0.34.0",
  "sentry-contexts",
- "sentry-core",
+ "sentry-core 0.34.0",
  "sentry-debug-images",
  "sentry-panic",
  "sentry-tracing",
  "tokio",
  "ureq",
+]
+
+[[package]]
+name = "sentry-backtrace"
+version = "0.31.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58cc8d4e04a73de8f718dc703943666d03f25d3e9e4d0fb271ca0b8c76dfa00e"
+dependencies = [
+ "backtrace",
+ "once_cell",
+ "regex",
+ "sentry-core 0.31.8",
 ]
 
 [[package]]
@@ -3633,7 +3646,7 @@ dependencies = [
  "backtrace",
  "once_cell",
  "regex",
- "sentry-core",
+ "sentry-core 0.34.0",
 ]
 
 [[package]]
@@ -3646,8 +3659,20 @@ dependencies = [
  "libc",
  "os_info",
  "rustc_version",
- "sentry-core",
+ "sentry-core 0.34.0",
  "uname",
+]
+
+[[package]]
+name = "sentry-core"
+version = "0.31.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "901f761681f97db3db836ef9e094acdd8756c40215326c194201941947164ef1"
+dependencies = [
+ "once_cell",
+ "sentry-types 0.31.8",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -3658,7 +3683,7 @@ checksum = "161283cfe8e99c8f6f236a402b9ccf726b201f365988b5bb637ebca0abbd4a30"
 dependencies = [
  "once_cell",
  "rand 0.8.5",
- "sentry-types",
+ "sentry-types 0.34.0",
  "serde",
  "serde_json",
 ]
@@ -3671,7 +3696,18 @@ checksum = "8fc6b25e945fcaa5e97c43faee0267eebda9f18d4b09a251775d8fef1086238a"
 dependencies = [
  "findshlibs",
  "once_cell",
- "sentry-core",
+ "sentry-core 0.34.0",
+]
+
+[[package]]
+name = "sentry-eyre"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1bf7116dfbdedbbe62ac93edca9b453069013aec2a0917c482a526fcbf4d700b"
+dependencies = [
+ "eyre",
+ "sentry-backtrace 0.31.8",
+ "sentry-core 0.31.8",
 ]
 
 [[package]]
@@ -3680,8 +3716,8 @@ version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc74f229c7186dd971a9491ffcbe7883544aa064d1589bd30b83fb856cd22d63"
 dependencies = [
- "sentry-backtrace",
- "sentry-core",
+ "sentry-backtrace 0.34.0",
+ "sentry-core 0.34.0",
 ]
 
 [[package]]
@@ -3690,10 +3726,27 @@ version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd3c5faf2103cd01eeda779ea439b68c4ee15adcdb16600836e97feafab362ec"
 dependencies = [
- "sentry-backtrace",
- "sentry-core",
+ "sentry-backtrace 0.34.0",
+ "sentry-core 0.34.0",
  "tracing-core",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "sentry-types"
+version = "0.31.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da956cca56e0101998c8688bc65ce1a96f00673a0e58e663664023d4c7911e82"
+dependencies = [
+ "debugid",
+ "hex",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "time",
+ "url",
+ "uuid",
 ]
 
 [[package]]
