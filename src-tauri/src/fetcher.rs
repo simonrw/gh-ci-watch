@@ -14,6 +14,12 @@ pub struct Fetcher {
     client: GitHubClient,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum RunDefinition {
+    Pr(u64),
+    Run(u64),
+}
+
 impl Fetcher {
     pub fn new(base_url: impl Into<String>, app_config: Arc<AppConfig>) -> Self {
         let client = GitHubClient::new(base_url, app_config);
@@ -26,24 +32,35 @@ impl Fetcher {
         owner: impl AsRef<str>,
         repo: impl AsRef<str>,
         workflow_id: u64,
-        pr_number: u64,
+        run_definition: RunDefinition,
     ) -> eyre::Result<Pr> {
         let token = token.as_ref();
         let owner = owner.as_ref();
         let repo = repo.as_ref();
-        let pr_info = self.fetch_pr_info(owner, repo, pr_number, token).await?;
 
-        // fetch workflow runs for branch
-        let GetWorkflowRunsResponse { mut workflow_runs } = self
-            .fetch_workflow_runs(owner, repo, workflow_id, pr_info.head.branch, token)
-            .await?;
-        workflow_runs.sort_by_key(|k| k.run_number);
-        let Some(run) = workflow_runs.pop() else {
-            // TODO
-            eyre::bail!("no workflow runs found");
+        let run = match run_definition {
+            RunDefinition::Pr(pr_number) => {
+                let pr_info = self.fetch_pr_info(owner, repo, pr_number, token).await?;
+
+                // fetch workflow runs for branch
+                let GetWorkflowRunsResponse { mut workflow_runs } = self
+                    .fetch_workflow_runs(owner, repo, workflow_id, pr_info.head.branch, token)
+                    .await
+                    .wrap_err_with(|| format!("fetching workflow run for PR {pr_number}"))?;
+                workflow_runs.sort_by_key(|k| k.run_number);
+                let Some(run) = workflow_runs.pop() else {
+                    // TODO
+                    eyre::bail!("no workflow runs found");
+                };
+                run
+            }
+            RunDefinition::Run(run_id) => self
+                .fetch_run(owner, repo, run_id, token)
+                .await
+                .wrap_err_with(|| format!("fetching run {run_id}"))?,
         };
 
-        tracing::debug!(run_id = %run.id, "got latest run");
+        tracing::debug!(run_id = %run.id, "got run");
 
         // DEBUG
         // let mut f = std::fs::File::create("in-progress-jobs.json").unwrap();
@@ -204,6 +221,16 @@ impl Fetcher {
                 }),
             )
             .await
+    }
+
+    async fn fetch_run(
+        &self,
+        owner: &str,
+        repo: &str,
+        run_id: u64,
+        token: &str,
+    ) -> eyre::Result<WorkflowRun> {
+        todo!()
     }
 
     async fn fetch_run_jobs(

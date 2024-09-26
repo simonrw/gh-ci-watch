@@ -39,18 +39,44 @@ async fn fetch_status(
     owner: String,
     repo: String,
     workflow_id: u64,
-    pr_number: u64,
+    pr_number: Option<u64>,
+    run_id: Option<u64>,
     token: String,
     state: State<'_, AppState>,
 ) -> Result<Pr, String> {
-    tracing::debug!(%owner, %repo, %workflow_id, %pr_number, "requesting status");
-    let fetcher = &state.fetcher;
-    let pr = fetcher
-        .fetch(token, owner, repo, workflow_id, pr_number)
-        .await
-        .map_err(|e| format!("Error fetching pr status: {e}"))?;
-    tracing::debug!(?pr, "got pr");
-    Ok(pr)
+    if let Some(pr_number) = pr_number {
+        tracing::debug!(%owner, %repo, %workflow_id, %pr_number, "requesting status");
+        let fetcher = &state.fetcher;
+        let pr = fetcher
+            .fetch(
+                token,
+                owner,
+                repo,
+                workflow_id,
+                fetcher::RunDefinition::Pr(pr_number),
+            )
+            .await
+            .map_err(|e| format!("Error fetching pr status: {e}"))?;
+        tracing::debug!(?pr, "got pr");
+        Ok(pr)
+    } else if let Some(run_id) = run_id {
+        tracing::debug!(%owner, %repo, %run_id, "requesting status");
+        let fetcher = &state.fetcher;
+        let pr = fetcher
+            .fetch(
+                token,
+                owner,
+                repo,
+                workflow_id,
+                fetcher::RunDefinition::Run(run_id),
+            )
+            .await
+            .map_err(|e| format!("Error fetching pr status: {e}"))?;
+        tracing::debug!(?pr, "got pr");
+        Ok(pr)
+    } else {
+        todo!()
+    }
 }
 
 #[tauri::command]
