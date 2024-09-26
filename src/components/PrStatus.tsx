@@ -50,8 +50,9 @@ export function PrStatus({ pr, removePr }: PrStatusProps) {
       const response = await invoke<PrStatusResponse>("fetch_status", {
         owner: pr.owner,
         repo: pr.repo,
-        prNumber: pr.number,
         workflowId: pr.workflowId,
+        prNumber: pr.number,
+        runId: pr.runNumber,
         token: storage.getToken(),
       });
 

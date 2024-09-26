@@ -1,9 +1,10 @@
 export type Pr = {
   status: Status;
-  number: number;
+  number: number | null;
   repo: string;
   workflowId: number;
   owner: string;
+  runNumber: number | null;
 };
 
 export type RawStatus =
@@ -61,7 +62,7 @@ export type StatusPayload = {
   repo: string;
   status: Status;
   title: string;
-  number: number;
+  number: number | null;
   description: string;
   numSteps: number;
   numCompleteSteps: number;
