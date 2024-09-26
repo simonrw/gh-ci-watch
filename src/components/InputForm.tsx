@@ -31,8 +31,9 @@ const formSchema = z.object({
   repo: z.string().min(1).max(50, {
     message: "Repo must be less than 50 characters",
   }),
-  workflow: z.coerce.number().min(0),
+  workflow: z.coerce.number().min(0).optional(),
   pr: z.coerce.number().min(0),
+  run: z.coerce.number().min(0).optional(),
 });
 
 type InputFormProps = {
@@ -55,6 +56,7 @@ export function InputForm(props: InputFormProps) {
       repo: "",
       workflow: 0,
       pr: 0,
+      run: 0,
     },
   });
 
@@ -93,7 +95,10 @@ export function InputForm(props: InputFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-8">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="flex flex-col gap-8"
+      >
         <div className="flex flex-col gap-2">
           <FormField
             control={form.control}
@@ -129,6 +134,19 @@ export function InputForm(props: InputFormProps) {
                 <FormLabel>PR #</FormLabel>
                 <FormControl>
                   <Input type="number" placeholder="PR #" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="run"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Run #</FormLabel>
+                <FormControl>
+                  <Input type="number" placeholder="Run #" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
