@@ -26,11 +26,31 @@ pub struct Head {
 }
 #[derive(Debug, Deserialize)]
 pub struct GetPullRequestResponse {
+    pub number: u64,
     pub title: String,
     pub head: Head,
     #[serde(rename = "body")]
     pub description: Option<String>,
     #[serde(rename = "html_url")]
+    pub url: String,
+}
+
+impl GetPullRequestResponse {
+    pub fn for_non_pr() -> Self {
+        Self {
+            number: 0,
+            title: "Single run".to_string(),
+            head: Head {
+                branch: "main".to_string(),
+            },
+            description: None,
+            url: "https://example.com".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RunPullRequest {
     pub url: String,
 }
 
@@ -61,6 +81,7 @@ pub struct WorkflowRun {
     pub head_commit: Commit,
     #[serde(rename = "html_url")]
     pub url: String,
+    pub pull_requests: Option<Vec<RunPullRequest>>,
 }
 
 #[derive(Debug, Deserialize)]

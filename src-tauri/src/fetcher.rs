@@ -5,6 +5,7 @@ use crate::{
     github::{
         GetPullRequestResponse, GetRunJobsResponse, GetWorkflowRunsQueryArgs,
         GetWorkflowRunsResponse, GetWorkflowsResponse, GitHubClient, RunJob, WorkflowDetails,
+        WorkflowRun,
     },
 };
 use color_eyre::eyre::{self, Context};
@@ -38,13 +39,20 @@ impl Fetcher {
         let owner = owner.as_ref();
         let repo = repo.as_ref();
 
-        let run = match run_definition {
+        let (pr_info, run) = match run_definition {
             RunDefinition::Pr(pr_number) => {
-                let pr_info = self.fetch_pr_info(owner, repo, pr_number, token).await?;
+                let mut pr_info = self.fetch_pr_info(owner, repo, pr_number, token).await?;
+                pr_info.number = pr_number;
 
                 // fetch workflow runs for branch
                 let GetWorkflowRunsResponse { mut workflow_runs } = self
-                    .fetch_workflow_runs(owner, repo, workflow_id, pr_info.head.branch, token)
+                    .fetch_workflow_runs(
+                        owner,
+                        repo,
+                        workflow_id,
+                        pr_info.head.branch.clone(),
+                        token,
+                    )
                     .await
                     .wrap_err_with(|| format!("fetching workflow run for PR {pr_number}"))?;
                 workflow_runs.sort_by_key(|k| k.run_number);
@@ -52,21 +60,25 @@ impl Fetcher {
                     // TODO
                     eyre::bail!("no workflow runs found");
                 };
-                run
+                (Some(pr_info), run)
             }
-            RunDefinition::Run(run_id) => self
-                .fetch_run(owner, repo, run_id, token)
-                .await
-                .wrap_err_with(|| format!("fetching run {run_id}"))?,
+            RunDefinition::Run(run_id) => {
+                let run = self
+                    .fetch_run(owner, repo, run_id, token)
+                    .await
+                    .wrap_err_with(|| format!("fetching run {run_id}"))?;
+                let pr_info = self
+                    .extract_pr_info_from_run(&run, token)
+                    .await
+                    .wrap_err("fetching PR info for run")?;
+                (pr_info, run)
+            }
         };
+
+        let pr_info = pr_info.unwrap_or_else(GetPullRequestResponse::for_non_pr);
 
         tracing::debug!(run_id = %run.id, "got run");
 
-        // DEBUG
-        // let mut f = std::fs::File::create("in-progress-jobs.json").unwrap();
-        // if let Err(e) = serde_json::to_writer_pretty(&mut f, &jobs) {
-        //     tracing::warn!(error = ?e, "error saving in-progress job JSON state");
-        // }
         // get run jobs
         tracing::debug!("fetching jobs for run");
         let GetRunJobsResponse { jobs } = self
@@ -82,33 +94,37 @@ impl Fetcher {
 
         tracing::debug!("updating PR state");
         let pr_result = match run.status.as_str() {
-            "completed" => match run.conclusion.as_deref() {
-                Some("failure") => {
-                    Pr {
-                        status: Status::Failed,
+            "completed" => {
+                match run.conclusion.as_deref() {
+                    Some("failure") => {
+                        Pr {
+                            status: Status::Failed,
+                            title: pr_info.title,
+                            description: pr_info.description.unwrap_or_else(String::new),
+                            num_steps: total,
+                            num_complete_steps: complete,
+                            pr_url: pr_info.url,
+                            run_url: run.url,
+                        }
+                        // tracing::debug!(before = ?pr.status, after = ?Status::Failed, "updating status");
+                        // pr.status = Status::Failed;
+                    }
+                    Some("success") => Pr {
+                        status: Status::Succeeded,
                         title: pr_info.title,
-                        description: pr_info.description.unwrap_or_else(String::new),
+                        description: pr_info.description.unwrap_or_default(),
                         num_steps: total,
                         num_complete_steps: complete,
                         pr_url: pr_info.url,
                         run_url: run.url,
+                    },
+                    other => {
+                        todo!(
+                            "unhandled combination of status: completed and conclusion: {other:?}"
+                        )
                     }
-                    // tracing::debug!(before = ?pr.status, after = ?Status::Failed, "updating status");
-                    // pr.status = Status::Failed;
                 }
-                Some("success") => Pr {
-                    status: Status::Succeeded,
-                    title: pr_info.title,
-                    description: pr_info.description.unwrap_or_default(),
-                    num_steps: total,
-                    num_complete_steps: complete,
-                    pr_url: pr_info.url,
-                    run_url: run.url,
-                },
-                other => {
-                    todo!("unhandled combination of status: completed and conclusion: {other:?}")
-                }
-            },
+            }
             "queued" => Pr {
                 status: Status::Queued,
                 title: pr_info.title,
@@ -143,9 +159,34 @@ impl Fetcher {
             other => todo!("unhandled status: {other}"),
         };
 
-        tracing::debug!(pr = %pr_number, status = ?pr_result, "PR result");
-
         Ok(pr_result)
+    }
+
+    async fn extract_pr_info_from_run(
+        &self,
+        run: &WorkflowRun,
+        token: &str,
+    ) -> eyre::Result<Option<GetPullRequestResponse>> {
+        let Some(prs) = &run.pull_requests else {
+            return Ok(None);
+        };
+
+        if prs.is_empty() {
+            return Ok(None);
+        }
+
+        let pr = &prs[0];
+        let url = &pr.url;
+        match self.client.get(url, token, None::<()>).await {
+            Ok(pr) => {
+                tracing::debug!(?pr, "got workflows for repo");
+                Ok(pr)
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "error fetching pull request");
+                eyre::bail!("error fetching pull_request");
+            }
+        }
     }
 
     pub async fn fetch_workflows(
