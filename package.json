@@ -25,7 +25,9 @@
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.2",
     "@tanstack/react-query": "^5.56.2",
-    "@tauri-apps/api": "^1",
+    "@tauri-apps/api": "^2.0.2",
+    "@tauri-apps/plugin-notification": "~2",
+    "@tauri-apps/plugin-shell": "~2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.446.0",
@@ -39,7 +41,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1",
+    "@tauri-apps/cli": "^2",
     "@types/node": "^22.7.4",
     "@types/react": "^18.3.10",
     "@types/react-dom": "^18.2.7",

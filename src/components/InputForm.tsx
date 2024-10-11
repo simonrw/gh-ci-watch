@@ -13,7 +13,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Pr } from "@/types";
 import { useQuery } from "@tanstack/react-query";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import { useContext } from "react";
 import { StorageContext } from "@/lib/storage";
 import {
