@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Pr, RawStatus, Status, statusFromRaw, StatusPayload } from "../types";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import Markdown from "react-markdown";
 import {
   Card,
