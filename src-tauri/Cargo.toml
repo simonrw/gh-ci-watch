@@ -16,13 +16,13 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 color-eyre = "0.6.3"
 reqwest = { version = "0.12.9", features = ["blocking", "json"] }
-tracing = "0.1.40"
+tracing = "0.1.41"
 clap = { version = "4.5.21", features = ["derive"] }
-tracing-subscriber = { version = "0.3.18", features = ["fmt", "env-filter"] }
+tracing-subscriber = { version = "0.3.19", features = ["fmt", "env-filter"] }
 tokio = { version = "1.41.1", features = ["macros", "time"] }
 toml = "0.8.19"
 dirs = "5.0.1"
-sentry = { version = "0.34.0", features = ["tracing"] }
+sentry = { version = "0.35.0", features = ["tracing"] }
 sentry-eyre = "0.2.0"
 tauri-plugin-notification = "2"
 tauri-plugin-shell = "2"
